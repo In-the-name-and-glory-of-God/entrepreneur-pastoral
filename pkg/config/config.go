@@ -9,9 +9,14 @@ import (
 
 type (
 	Config struct {
-		Database Database
-		Redis    Redis
-		RabbitMQ RabbitMQ
+		Application Application
+		Database    Database
+		Redis       Redis
+		RabbitMQ    RabbitMQ
+	}
+
+	Application struct {
+		Env string
 	}
 
 	Database struct {
@@ -42,6 +47,9 @@ type (
 
 func Load() Config {
 	return Config{
+		Application: Application{
+			Env: env.GetString("APP_ENV", "development"),
+		},
 		Database: Database{
 			Host:            env.GetString("DB_HOST", "localhost"),
 			Port:            env.GetInt("DB_PORT", 5432),
