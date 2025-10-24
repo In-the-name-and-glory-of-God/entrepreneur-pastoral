@@ -1,0 +1,11 @@
+# Test
+*.test
+
+# Folders
+vendor/
+build/
+tmp/
+
+# Files
+.env
+*.log
