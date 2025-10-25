@@ -1,27 +1,17 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-          condition: service_healthy
-      redis:
-          condition: service_healthy
-      rabbitmq:
-          condition: service_healthy
-
   postgres:
     image: postgres:16.3
     container_name: postgres
+    restart: always
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - PGDATA=/var/lib/postgresql/16/docker
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -29,11 +19,12 @@ services:
       retries: 5
       start_period: 10s
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/16/docker
 
   redis:
-    image: redis:alpine
+    image: redis:8.2-alpine
     container_name: redis
+    restart: always
     ports:
       - "6379:6379"
     healthcheck:
@@ -46,8 +37,9 @@ services:
       - redis-data:/data
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:4-management-alpine
     container_name: rabbitmq
+    restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -62,6 +54,22 @@ services:
       start_period: 10s
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+
+  app:
+    build: .
+    container_name: entrepreneur-pastoral
+    restart: always
+    env_file:
+      - ./.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+          condition: service_healthy
+      redis:
+          condition: service_healthy
+      rabbitmq:
+          condition: service_healthy
 
 volumes:
   postgres-data:
