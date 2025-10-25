@@ -32,9 +32,11 @@ type (
 	}
 
 	Redis struct {
+		Protocol int
 		Host     string
 		Port     int
 		Password string
+		DB       int
 	}
 
 	RabbitMQ struct {
@@ -62,9 +64,11 @@ func Load() Config {
 			ConnMaxLifetime: env.GetDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
 		},
 		Redis: Redis{
+			Protocol: env.GetInt("REDIS_PROTOCOL", 2),
 			Host:     env.GetString("REDIS_HOST", "localhost"),
 			Port:     env.GetInt("REDIS_PORT", 6379),
 			Password: env.GetString("REDIS_PASSWORD", ""),
+			DB:       env.GetInt("REDIS_DB", 0),
 		},
 		RabbitMQ: RabbitMQ{
 			Host:     env.GetString("RABBITMQ_HOST", "localhost"),
