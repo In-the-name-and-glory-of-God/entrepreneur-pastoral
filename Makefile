@@ -1,4 +1,4 @@
-.PHONY: help build run air docker-build docker-up docker-down docker-logs test lint
+.PHONY: help build docker-up docker-down docker-logs go-mod-verify go-vet lint test build pipeline
 .DEFAULT_GOAL := help
 
 # Variables
@@ -10,26 +10,18 @@ help:
 	@echo ""
 	@echo "Available commands:"
 	@echo "  build          Build the Go binary"
-	@echo "  run            Run the application"
-	@echo "  air            Run the application with live reloading"
-	@echo "  docker-build   Build the Docker image"
 	@echo "  docker-up      Start the services using docker-compose"
 	@echo "  docker-down    Stop the services using docker-compose"
 	@echo "  docker-logs    View the logs of the services"
-	@echo "  test           Run the tests"
+	@echo "  pipeline   	Runs go-mod-verify, go-vet, lint, test and build"
+	@echo "  go-mod-verify  Verify dependencies"
+	@echo "  go-vet        	Analyze source code"
 	@echo "  lint           Run the linter"
+	@echo "  test           Run the tests"
 
 build:
 	@echo "Building the application..."
 	@go build -o build/$(APP_NAME) ./cmd/server/main.go
-
-run:
-	@echo "Running the application..."
-	@go run ./cmd/server/main.go
-
-docker-build:
-	@echo "Building the Docker image..."
-	@docker-compose build
 
 docker-up:
 	@echo "Starting the services..."
@@ -43,10 +35,22 @@ docker-logs:
 	@echo "Viewing the logs..."
 	@docker-compose logs -f
 
-test:
-	@echo "Running tests..."
-	@go test -v ./...
+pipeline: go-mod-verify go-vet lint test build
+	@echo "Entrepreneur Pastoral pipeline execution done."
+
+go-mod-verify:
+	@echo "Verifying modules..."
+	@go mod verify
+
+go-vet:
+	@echo "Analyzing source code..."
+	@go vet ./...
 
 lint:
 	@echo "Running linter..."
 	@golangci-lint run
+
+test:
+	@echo "Running tests..."
+	@go test -v ./...
+	

@@ -9,3 +9,7 @@ tmp/
 # Files
 .env
 *.log
+
+# IDE
+.vscode/
+.idea/

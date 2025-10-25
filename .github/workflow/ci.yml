@@ -1,0 +1,46 @@
+name: Go CI Pipeline
+
+# Triggers the workflow on push or pull request events for the "main" branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Set up the Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # Reads the go version from your go.mod file
+          go-version-file: 'go.mod'
+          # Enables caching for Go modules
+          cache: true
+
+      # 2. Run go-mod-verify
+      - name: Verify modules
+        run: go mod verify
+
+      # 3. Run go-vet
+      - name: Analyze source code (go vet)
+        run: go vet ./...
+
+      # 4. Run lint
+      # This action automatically installs and runs golangci-lint
+      - name: Run linter (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --verbose
+
+      # 5. Run test
+      - name: Run tests
+        run: go test -v ./...
+
+      # 6. Run build
+      - name: Build
+        run: go build -v ./...
