@@ -1,9 +1,10 @@
-.PHONY: help build docker-up docker-down docker-logs go-mod-verify go-vet lint test build pipeline
+.PHONY: help build docker-up docker-down docker-logs pipeline go-mod-verify go-vet lint test
 .DEFAULT_GOAL := help
 
 # Variables
-APP_NAME=entrepreneur-pastoral
 GO_FILES=$(shell find . -name '*.go' -not -path "./vendor/*")
+MIGRATIONS_PATH=./pkg/database/migrations
+DATABASE_ADDR="postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?$(DB_PARAMS)&search_path=public"
 
 help:
 	@echo "Usage: make <command>"
@@ -13,6 +14,9 @@ help:
 	@echo "  docker-up      Start the services using docker-compose"
 	@echo "  docker-down    Stop the services using docker-compose"
 	@echo "  docker-logs    View the logs of the services"
+	@echo "	 migration		Create the migrations"
+	@echo "  migration-up   Run the migrations"
+	@echo "  migration-down Rollback the last migration or a specific number of migrations"
 	@echo "  pipeline   	Runs go-mod-verify, go-vet, lint, test and build"
 	@echo "  go-mod-verify  Verify dependencies"
 	@echo "  go-vet        	Analyze source code"
@@ -34,6 +38,18 @@ docker-down:
 docker-logs:
 	@echo "Viewing the logs..."
 	@docker-compose logs -f
+
+.PHONY: migrate-create
+migration:
+	@migrate create -seq -ext sql -dir $(MIGRATIONS_PATH) $(filter-out $@,$(MAKECMDGOALS))
+
+.PHONY: migrate-up
+migration-up:
+	@migrate -path=$(MIGRATIONS_PATH) -database=$(DATABASE_ADDR) up
+
+.PHONY: migrate-down
+migration-down:
+	@migrate -path=$(MIGRATIONS_PATH) -database=$(DATABASE_ADDR) down $(filter-out $@,$(MAKECMDGOALS))
 
 pipeline: go-mod-verify go-vet lint test build
 	@echo "Entrepreneur Pastoral pipeline execution done."
