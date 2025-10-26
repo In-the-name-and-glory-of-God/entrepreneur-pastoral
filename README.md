@@ -18,7 +18,7 @@ The main goal of this project is to bring together all catholic's entrepreneurs 
 
 ## Modules
 The system will have the following modules:
-- **User**: Users data and contact info, notifications management, CV upload and areas of interest.
+- **User**: Users data, Job profile, Roles and Notifications management.
 - **Admin**: Configuration related stuff (users role, business config/approval, permissions/role management and pastoral info).
 - **Entrepreneur**: Business data and contact info, products and services offered and jobs available.
 - **Marketplace**: A meeting point for all users and business, where business can find suppliers and workers and users can find services/products or jobs.
