@@ -90,12 +90,25 @@ func (c Cache) Del(ctx context.Context, key string) error {
 }
 
 func (c Cache) Scan(ctx context.Context, match string) ([]string, error) {
-	res, _, err := c.client.Scan(ctx, 0, match, 100).Result()
-	if err != nil {
-		return nil, err
+	var keys []string
+	var cursor uint64
+
+	for {
+		var batch []string
+		var err error
+		batch, cursor, err = c.client.Scan(ctx, cursor, match, 100).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		keys = append(keys, batch...)
+
+		if cursor == 0 {
+			break
+		}
 	}
 
-	return res, nil
+	return keys, nil
 }
 
 func (c Cache) Exists(ctx context.Context, key string) (bool, error) {
