@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, user *User) error
-	Update(ctx context.Context, user *User) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	UnitOfWork(ctx context.Context, fn func(*sqlx.Tx) error) error
+	Create(tx *sqlx.Tx, user *User) error
+	Update(tx *sqlx.Tx, user *User) error
+	UpdateProperty(ctx context.Context, id uuid.UUID, property UserProperty, value any) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByDocumentID(ctx context.Context, documentID string) (*User, error)
@@ -18,6 +20,6 @@ type UserRepository interface {
 	GetAllByIsVerified(ctx context.Context, isVerified bool) ([]*User, error)
 	GetAllByIsCatholic(ctx context.Context, isCatholic bool) ([]*User, error)
 	GetAllByIsEntrepreneur(ctx context.Context, isEntrepreneur bool) ([]*User, error)
-	Find(ctx context.Context, filter UserFilter) ([]*User, error)
-	Count(ctx context.Context, filter UserFilter) (int, error)
+	Find(ctx context.Context, filter *UserFilters) ([]*User, error)
+	Count(ctx context.Context, filter *UserFilters) (int, error)
 }

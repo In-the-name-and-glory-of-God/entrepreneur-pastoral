@@ -6,6 +6,7 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	sq "github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -24,15 +25,10 @@ func NewNotificationPreferencesPersistence(db *sqlx.DB) *NotificationPreferences
 }
 
 // Create inserts a new notification preferences record for a user.
-func (r *NotificationPreferencesPersistence) Create(ctx context.Context, notificationPreferences *domain.NotificationPreferences) error {
+func (r *NotificationPreferencesPersistence) Create(tx *sqlx.Tx, prefs *domain.NotificationPreferences) error {
 	query, args, err := r.psql.Insert("notification_preferences").
-		Columns("user_id", "notify_by_email", "notify_by_sms").
-		Values(
-			notificationPreferences.UserID,
-			notificationPreferences.NotifyByEmail,
-			notificationPreferences.NotifyBySms,
-		).
-		// In case a user tries to create this twice, this prevents a crash.
+		Columns("user_id").
+		Values(prefs.UserID).
 		Suffix("ON CONFLICT (user_id) DO NOTHING").
 		ToSql()
 
@@ -40,7 +36,7 @@ func (r *NotificationPreferencesPersistence) Create(ctx context.Context, notific
 		return fmt.Errorf("failed to build create notificationPreferences query: %w", err)
 	}
 
-	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+	if _, err := tx.Exec(query, args...); err != nil {
 		return fmt.Errorf("failed to execute create notificationPreferences query: %w", err)
 	}
 
@@ -48,63 +44,26 @@ func (r *NotificationPreferencesPersistence) Create(ctx context.Context, notific
 }
 
 // Update modifies an existing notification preferences record.
-func (r *NotificationPreferencesPersistence) Update(ctx context.Context, notificationPreferences *domain.NotificationPreferences) error {
+func (r *NotificationPreferencesPersistence) Update(tx *sqlx.Tx, prefs *domain.NotificationPreferences) error {
 	query, args, err := r.psql.Update("notification_preferences").
-		Set("notify_by_email", notificationPreferences.NotifyByEmail).
-		Set("notify_by_sms", notificationPreferences.NotifyBySms).
-		Where(sq.Eq{"user_id": notificationPreferences.UserID}).
+		Set("notify_by_email", prefs.NotifyByEmail).
+		Set("notify_by_sms", prefs.NotifyBySms).
+		Where(sq.Eq{"user_id": prefs.UserID}).
 		ToSql()
 
 	if err != nil {
 		return fmt.Errorf("failed to build update notificationPreferences query: %w", err)
 	}
 
-	result, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
+	if _, err := tx.Exec(query, args...); err != nil {
 		return fmt.Errorf("failed to execute update notificationPreferences query: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to check rows affected on update: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("no rows were updated")
-	}
-
-	return nil
-}
-
-// Delete removes a notification preferences record by user ID.
-func (r *NotificationPreferencesPersistence) Delete(ctx context.Context, userID string) error {
-	query, args, err := r.psql.Delete("notification_preferences").
-		Where(sq.Eq{"user_id": userID}).
-		ToSql()
-
-	if err != nil {
-		return fmt.Errorf("failed to build delete notificationPreferences query: %w", err)
-	}
-
-	result, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to execute delete notificationPreferences query: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to check rows affected on delete: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("no rows were deleted")
 	}
 
 	return nil
 }
 
 // GetByUserID retrieves a single notification preferences record by user ID.
-func (r *NotificationPreferencesPersistence) GetByUserID(ctx context.Context, userID string) (*domain.NotificationPreferences, error) {
+func (r *NotificationPreferencesPersistence) GetByUserID(ctx context.Context, userID uuid.UUID) (*domain.NotificationPreferences, error) {
 	var prefs domain.NotificationPreferences
 	query, args, err := r.psql.Select("*").From("notification_preferences").
 		Where(sq.Eq{"user_id": userID}).
@@ -116,7 +75,6 @@ func (r *NotificationPreferencesPersistence) GetByUserID(ctx context.Context, us
 	}
 
 	if err := r.db.GetContext(ctx, &prefs, query, args...); err != nil {
-		// This will correctly return sql.ErrNoRows if not found
 		return nil, fmt.Errorf("failed to execute get notificationPreferences by userID query: %w", err)
 	}
 
