@@ -413,3 +413,144 @@ func TestTokenManagerClaimsIsolation(t *testing.T) {
 		t.Errorf("Expected UserID 'user2', got '%s'", tm3.claims.UserID)
 	}
 }
+
+func TestGetClaims(t *testing.T) {
+	secret := "test-secret"
+	userID := "user123"
+	email := "user@example.com"
+	roleID := int16(2)
+
+	tm := NewTokenManager(secret)
+
+	// Test GetClaims after GenerateToken
+	token, err := tm.GenerateToken(userID, email, roleID)
+	if err != nil {
+		t.Fatalf("Failed to generate token: %v", err)
+	}
+
+	claims := tm.GetClaims()
+	if claims == nil {
+		t.Fatal("Expected claims to be non-nil")
+	}
+
+	if claims.UserID != userID {
+		t.Errorf("Expected UserID '%s', got '%s'", userID, claims.UserID)
+	}
+
+	if claims.Email != email {
+		t.Errorf("Expected Email '%s', got '%s'", email, claims.Email)
+	}
+
+	if claims.RoleID != roleID {
+		t.Errorf("Expected RoleID %d, got %d", roleID, claims.RoleID)
+	}
+
+	// Test GetClaims after ParseToken
+	tm2 := NewTokenManager(secret)
+	err = tm2.ParseToken(token)
+	if err != nil {
+		t.Fatalf("Failed to parse token: %v", err)
+	}
+
+	claims2 := tm2.GetClaims()
+	if claims2 == nil {
+		t.Fatal("Expected claims to be non-nil after parsing")
+	}
+
+	if claims2.UserID != userID {
+		t.Errorf("Expected UserID '%s', got '%s'", userID, claims2.UserID)
+	}
+
+	if claims2.Email != email {
+		t.Errorf("Expected Email '%s', got '%s'", email, claims2.Email)
+	}
+
+	if claims2.RoleID != roleID {
+		t.Errorf("Expected RoleID %d, got %d", roleID, claims2.RoleID)
+	}
+}
+
+func TestIsStrongPassword(t *testing.T) {
+	tests := []struct {
+		name          string
+		password      string
+		expectedError bool
+		errorContains string
+	}{
+		{
+			name:          "valid strong password",
+			password:      "MyP@ssw0rd123",
+			expectedError: false,
+		},
+		{
+			name:          "another valid password",
+			password:      "Secure!Pass123",
+			expectedError: false,
+		},
+		{
+			name:          "too short",
+			password:      "Aa1!",
+			expectedError: true,
+			errorContains: "at least 8 characters long",
+		},
+		{
+			name:          "no number",
+			password:      "Password!",
+			expectedError: true,
+			errorContains: "at least one number",
+		},
+		{
+			name:          "no uppercase",
+			password:      "password123!",
+			expectedError: true,
+			errorContains: "at least one uppercase letter",
+		},
+		{
+			name:          "no lowercase",
+			password:      "PASSWORD123!",
+			expectedError: true,
+			errorContains: "at least one lowercase letter",
+		},
+		{
+			name:          "no special character",
+			password:      "Password123",
+			expectedError: true,
+			errorContains: "at least one special character",
+		},
+		{
+			name:          "empty password",
+			password:      "",
+			expectedError: true,
+			errorContains: "at least 8 characters long",
+		},
+		{
+			name:          "only letters",
+			password:      "OnlyLetters",
+			expectedError: true,
+			errorContains: "at least one number",
+		},
+		{
+			name:          "complex valid password",
+			password:      "C0mpl3x!P@ssw0rd#2024",
+			expectedError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := IsStrongPassword(tt.password)
+
+			if tt.expectedError {
+				if err == nil {
+					t.Error("Expected error, got nil")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error to contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}
