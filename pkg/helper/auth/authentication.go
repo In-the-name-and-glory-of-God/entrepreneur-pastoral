@@ -20,19 +20,15 @@ type Claims struct {
 // TokenManager
 type TokenManager struct {
 	secret string
-	claims *Claims
 }
 
 func NewTokenManager(secret string) *TokenManager {
-	return &TokenManager{
-		secret: secret,
-		claims: &Claims{},
-	}
+	return &TokenManager{secret: secret}
 }
 
 // GenerateToken creates a new JWT token for the given user ID, email, and role ID.
 func (t *TokenManager) GenerateToken(userID string, email string, roleID int16) (string, error) {
-	t.claims = &Claims{
+	claims := &Claims{
 		UserID: userID,
 		Email:  email,
 		RoleID: roleID,
@@ -42,7 +38,7 @@ func (t *TokenManager) GenerateToken(userID string, email string, roleID int16) 
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, t.claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(t.secret))
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
@@ -53,7 +49,7 @@ func (t *TokenManager) GenerateToken(userID string, email string, roleID int16) 
 
 // ParseToken parses and validates a JWT token string, returning the claims if valid.
 func (t *TokenManager) ParseToken(tokenString string) error {
-	token, err := jwt.ParseWithClaims(tokenString, t.claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
