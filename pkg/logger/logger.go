@@ -3,17 +3,17 @@ package logger
 import (
 	"os"
 
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/constants"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-func New(env string) *zap.SugaredLogger {
+func New(app config.Application) *zap.SugaredLogger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	logLevel := zapcore.InfoLevel
-	if env == constants.DEVELOPMENT {
+	if app.IsDevelopment() {
 		logLevel = zapcore.DebugLevel
 	}
 

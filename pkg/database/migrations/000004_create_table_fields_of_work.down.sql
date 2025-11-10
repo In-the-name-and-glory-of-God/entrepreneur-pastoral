@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS fields_of_work;
