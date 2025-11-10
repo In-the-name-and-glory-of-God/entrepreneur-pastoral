@@ -68,17 +68,23 @@ func (c Cache) GetAndDel(ctx context.Context, key string, dest any) error {
 }
 
 func (c Cache) Set(ctx context.Context, key string, val any, expire time.Duration) error {
-	if err := c.client.HSet(ctx, key, val).Err(); err != nil {
-		return err
-	}
-
-	if expire > 0 {
-		if err := c.client.Expire(ctx, key, expire).Err(); err != nil {
+	// Use TxPipelined to execute HSet and Expire atomically
+	// This prevents memory leaks if the application crashes between the two operations
+	_, err := c.client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		if err := pipe.HSet(ctx, key, val).Err(); err != nil {
 			return err
 		}
-	}
 
-	return nil
+		if expire > 0 {
+			if err := pipe.Expire(ctx, key, expire).Err(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 func (c Cache) Del(ctx context.Context, key string) error {
