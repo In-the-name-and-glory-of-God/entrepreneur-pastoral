@@ -4,19 +4,47 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/env"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/constants"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/env"
 )
 
 type (
 	Config struct {
 		Application Application
+		API         API
 		Database    Database
 		Redis       Redis
 		RabbitMQ    RabbitMQ
 	}
 
 	Application struct {
-		Env string
+		Secret string
+		Name   string
+		Env    string
+	}
+
+	API struct {
+		Host         string
+		Port         int
+		WriteTimeout time.Duration
+		ReadTimeout  time.Duration
+		IdleTimeout  time.Duration
+		CORS         CORS
+		RateLimiter  RateLimiter
+	}
+
+	CORS struct {
+		AllowedOrigins   []string
+		AllowedMethods   []string
+		AllowedHeaders   []string
+		ExposedHeaders   []string
+		AllowCredentials bool
+		MaxAge           int
+	}
+
+	RateLimiter struct {
+		RequestLimit int
+		WindowLength time.Duration
 	}
 
 	Database struct {
@@ -50,7 +78,28 @@ type (
 func Load() Config {
 	return Config{
 		Application: Application{
-			Env: env.GetString("APP_ENV", "development"),
+			Secret: env.GetString("APP_SECRET", "322ce8d7-25d5-4340-a96e-32ebf6a00299"),
+			Name:   env.GetString("APP_NAME", "entrepreneur-pastoral"),
+			Env:    env.GetString("APP_ENV", "development"),
+		},
+		API: API{
+			Host:         env.GetString("API_HOST", "localhost"),
+			Port:         env.GetInt("API_PORT", 8080),
+			WriteTimeout: env.GetDuration("API_WRITE_TIMEOUT", 30*time.Second),
+			ReadTimeout:  env.GetDuration("API_READ_TIMEOUT", 10*time.Second),
+			IdleTimeout:  env.GetDuration("API_IDLE_TIMEOUT", 1*time.Minute),
+			CORS: CORS{
+				AllowedOrigins:   env.GetStringSlice("API_CORS_ALLOWED_ORIGINS", []string{"*"}),
+				AllowedMethods:   env.GetStringSlice("API_CORS_ALLOWED_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
+				AllowedHeaders:   env.GetStringSlice("API_CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"}),
+				ExposedHeaders:   env.GetStringSlice("API_CORS_EXPOSED_HEADERS", []string{"Link"}),
+				AllowCredentials: env.GetBool("API_CORS_ALLOW_CREDENTIALS", false),
+				MaxAge:           env.GetInt("API_CORS_MAX_AGE", 300),
+			},
+			RateLimiter: RateLimiter{
+				RequestLimit: env.GetInt("API_RATE_LIMITER_REQUEST_LIMIT", 10),
+				WindowLength: env.GetDuration("API_RATE_LIMITER_WINDOW_LENGTH", 1*time.Minute),
+			},
 		},
 		Database: Database{
 			Host:            env.GetString("DB_HOST", "localhost"),
@@ -77,6 +126,18 @@ func Load() Config {
 			Password: env.GetString("RABBITMQ_PASSWORD", "guest"),
 		},
 	}
+}
+
+func (a Application) IsDevelopment() bool {
+	return a.Env == constants.DEVELOPMENT
+}
+
+func (a Application) IsProduction() bool {
+	return a.Env == constants.PRODUCTION
+}
+
+func (a API) Addr() string {
+	return fmt.Sprintf("%s:%d", a.Host, a.Port)
 }
 
 func (d Database) DSN() string {
