@@ -12,7 +12,7 @@ type JobProfile struct {
 	UserID     uuid.UUID      `json:"user_id" db:"user_id"`
 	OpenToWork bool           `json:"open_to_work" db:"open_to_work"`
 	CVPath     sql.NullString `json:"cv_path" db:"cv_path"`
-	CreatedAt  time.Time      `json:"_" db:"created_at"`
+	CreatedAt  time.Time      `json:"-" db:"created_at"`
 	UpdatedAt  time.Time      `json:"-" db:"updated_at"`
 
 	// This field would be populated by a custom JOIN query,

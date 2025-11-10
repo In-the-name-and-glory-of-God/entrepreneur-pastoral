@@ -43,8 +43,6 @@ func (r *UserPersistence) UnitOfWork(ctx context.Context, fn func(*sqlx.Tx) erro
 			panic(p)
 		} else if err != nil {
 			_ = tx.Rollback()
-		} else {
-			_ = tx.Commit()
 		}
 	}()
 
