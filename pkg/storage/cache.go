@@ -56,12 +56,28 @@ func (c Cache) Get(ctx context.Context, key string, dest any) error {
 }
 
 func (c Cache) GetAndDel(ctx context.Context, key string, dest any) error {
-	if err := c.client.HGetAll(ctx, key).Scan(dest); err != nil {
+	// Use Lua script to atomically get and delete the key
+	// This ensures that if the data is retrieved, it's also deleted in the same operation
+	script := redis.NewScript(`
+		local value = redis.call('HGETALL', KEYS[1])
+		if next(value) ~= nil then
+			redis.call('DEL', KEYS[1])
+		end
+		return value
+	`)
+
+	result, err := script.Run(ctx, c.client, []string{key}).Result()
+	if err != nil {
 		return err
 	}
 
-	if err := c.client.Del(ctx, key).Err(); err != nil {
-		return err
+	// Convert the result to a slice and scan into dest
+	if resultSlice, ok := result.([]interface{}); ok {
+		// Use redis.NewSliceResult to create a compatible result for Scan
+		cmd := redis.NewSliceResult(resultSlice, nil)
+		if err := cmd.Scan(dest); err != nil {
+			return err
+		}
 	}
 
 	return nil
