@@ -17,6 +17,8 @@ This is a Catholic Marketplace Platform built as a modular monolith that brings 
 - **Database** Migrations: golang-migrate
 
 ### Project Structure
+
+```
 ├── cmd/api/                   # Application entry point
 │   ├── main.go                # Server initialization & graceful shutdown
 │   ├── orchestrator/          # Dependency injection & composition
@@ -32,6 +34,7 @@ This is a Catholic Marketplace Platform built as a modular monolith that brings 
 │   ├── helper/                # Auth, constants, env helpers
 │   ├── logger/                # Structured logging
 │   └── storage/               # Redis cache abstraction
+```
 
 ### Design Patterns Used
 - **Repository Pattern** - Abstraction over data access
