@@ -30,12 +30,21 @@ type CachePrefix uint8
 
 const (
 	CACHE_PREFIX_SESSION CachePrefix = iota
+	CACHE_PREFIX_EMAIL_VERIFICATION
+	CACHE_PREFIX_PASSWORD_RESET
+	CACHE_PREFIX_REFRESH_TOKEN
 )
 
 func (p CachePrefix) String() string {
 	switch p {
 	case CACHE_PREFIX_SESSION:
 		return "session"
+	case CACHE_PREFIX_EMAIL_VERIFICATION:
+		return "email_verification"
+	case CACHE_PREFIX_PASSWORD_RESET:
+		return "password_reset"
+	case CACHE_PREFIX_REFRESH_TOKEN:
+		return "refresh_token"
 	default:
 		return ""
 	}

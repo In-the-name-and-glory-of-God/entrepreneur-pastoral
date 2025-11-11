@@ -17,10 +17,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	EmailVerificationTokenPrefix = "email_verify_"
-)
-
 type AuthHandler struct {
 	logger      *zap.SugaredLogger
 	cache       storage.CacheStorage
@@ -102,7 +98,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.authService.Login(r.Context(), &req)
+	token, err := h.authService.Login(r.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserInactive) {
 			response.Forbidden(w, "User account is inactive")
@@ -120,7 +116,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth.SetRefreshTokenCookie(w, user.ID.String())
+	// TODO: Set refresh token cookie logic here
+	// auth.SetRefreshTokenCookie(w, user.ID.String())
 
 	response.OK(w, "Login successful", dto.UserLoginResponse{
 		Token: token,
@@ -190,7 +187,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.cache.GetStringAndDel(r.Context(), EmailVerificationTokenPrefix+token)
+	id, err := h.cache.GetStringAndDel(r.Context(), h.cache.BuildKey(storage.CACHE_PREFIX_EMAIL_VERIFICATION, token))
 	if err != nil {
 		if errors.Is(err, storage.ErrCacheMiss) {
 			response.BadRequest(w, "Invalid or expired token", nil)
@@ -220,31 +217,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: Set proper refresh token expiration and security flags
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	rt, err := auth.GetRefreshTokenCookie(r)
-	if err != nil {
-		response.Unauthorized(w, "Missing or invalid refresh token")
-		return
-	}
-
-	token, err := h.authService.RefreshToken(r.Context(), rt)
-	if err != nil {
-		if errors.Is(err, auth.ErrInvalidToken) {
-			response.Unauthorized(w, "Invalid authorization token")
-			return
-		} else if errors.Is(err, auth.ErrTokenExpired) {
-			response.Unauthorized(w, "Authorization token has expired")
-			return
-		}
-
-		h.logger.Errorf("Failed to refresh token", "error", err)
-		response.InternalServerError(w, "Failed to refresh token")
-		return
-	}
-
-	auth.SetRefreshTokenCookie(w, rt)
-
-	response.OK(w, "Token refreshed successfully", dto.UserLoginResponse{
-		Token: token,
-	})
+	response.NotImplemented(w, "Refresh token functionality not implemented yet")
 }

@@ -5,6 +5,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type UserAsContext struct {
+	ID     uuid.UUID `json:"id"`
+	Email  string    `json:"email"`
+	RoleID int16     `json:"role_id"`
+}
+
 type UserGetResponse struct {
 	User                    *domain.User                    `json:"user"`
 	NotificationPreferences *domain.NotificationPreferences `json:"notification_preferences"`
