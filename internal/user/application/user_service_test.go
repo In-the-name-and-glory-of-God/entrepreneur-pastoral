@@ -524,7 +524,7 @@ func TestUserService_List_Success(t *testing.T) {
 	}
 	expectedCount := 2
 
-	mockUserRepo.On("Find", ctx, filter).Return(expectedUsers, nil)
+	mockUserRepo.On("List", ctx, filter).Return(expectedUsers, nil)
 	mockUserRepo.On("Count", ctx, filter).Return(expectedCount, nil)
 
 	result, err := service.List(ctx, filter)
@@ -543,7 +543,7 @@ func TestUserService_List_EmptyResults(t *testing.T) {
 	filter := &dto.UserListRequest{}
 	expectedUsers := []*domain.User{}
 
-	mockUserRepo.On("Find", ctx, filter).Return(expectedUsers, domain.ErrUserNotFound)
+	mockUserRepo.On("List", ctx, filter).Return(expectedUsers, domain.ErrUserNotFound)
 
 	result, err := service.List(ctx, filter)
 
@@ -554,13 +554,13 @@ func TestUserService_List_EmptyResults(t *testing.T) {
 	mockUserRepo.AssertExpectations(t)
 }
 
-func TestUserService_List_FindError(t *testing.T) {
+func TestUserService_List_ListError(t *testing.T) {
 	service, mockUserRepo, _, _ := setupTest()
 	ctx := context.Background()
 
 	filter := &dto.UserListRequest{}
 
-	mockUserRepo.On("Find", ctx, filter).Return(nil, errors.New("database error"))
+	mockUserRepo.On("List", ctx, filter).Return(nil, errors.New("database error"))
 
 	result, err := service.List(ctx, filter)
 
@@ -579,7 +579,7 @@ func TestUserService_List_CountError(t *testing.T) {
 		{ID: uuid.New()},
 	}
 
-	mockUserRepo.On("Find", ctx, filter).Return(expectedUsers, nil)
+	mockUserRepo.On("List", ctx, filter).Return(expectedUsers, nil)
 	mockUserRepo.On("Count", ctx, filter).Return(0, errors.New("database error"))
 
 	result, err := service.List(ctx, filter)

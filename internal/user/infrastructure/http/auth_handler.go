@@ -147,9 +147,9 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		response.BadRequest(w, "Missing token", nil)
 		return
-	} else {
-		// TODO: Validate token from cache logic here
 	}
+
+	// TODO: Validate token from cache logic here
 
 	userID, err := uuid.Parse(id)
 	if err != nil {
