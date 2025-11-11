@@ -28,12 +28,8 @@ type UserLoginResponse struct {
 	Token string `json:"token"`
 }
 
-type UserUpdatePasswordRequest struct {
+type UserResetPasswordRequest struct {
 	ID          uuid.UUID `json:"id"`
-	OldPassword string    `json:"old_password"`
-	NewPassword string    `json:"new_password"`
-}
-
-type UserUpdatePasswordResponse struct {
-	Message string `json:"message"`
+	Email       string    `json:"email,omitempty"`
+	NewPassword string    `json:"new_password,omitempty"`
 }

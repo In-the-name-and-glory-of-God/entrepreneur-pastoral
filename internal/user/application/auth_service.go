@@ -25,31 +25,37 @@ func NewAuthService(logger *zap.SugaredLogger, tokenManager *auth.TokenManager, 
 	}
 }
 
-func (s *AuthService) Login(ctx context.Context, req *dto.UserLoginRequest) (string, error) {
+func (s *AuthService) Login(ctx context.Context, req *dto.UserLoginRequest) (*domain.User, string, error) {
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return "", domain.ErrUserNotFound
+			return nil, "", domain.ErrUserNotFound
 		}
 
 		s.logger.Errorw("failed to get user by email", "email", req.Email, "error", err)
-		return "", response.ErrInternalServerError
+		return nil, "", response.ErrInternalServerError
 	}
 
 	if !user.IsActive {
-		return "", domain.ErrUserInactive
+		return nil, "", domain.ErrUserInactive
+	}
+
+	if !user.IsVerified {
+		return nil, "", domain.ErrEmailNotVerified
 	}
 
 	if err := auth.VerifyPassword(user.Password, req.Password); err != nil {
 		s.logger.Errorw("failed to verify password", "userID", user.ID, "error", err)
-		return "", domain.ErrInvalidPassword
+		return nil, "", domain.ErrInvalidPassword
 	}
 
-	return s.tokenManager.GenerateToken(user.ID.String(), user.Email, user.RoleID)
+	token, err := s.tokenManager.GenerateToken(user.ID.String())
+
+	return user, token, err
 }
 
-func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserUpdatePasswordRequest) error {
-	user, err := s.userRepo.GetByID(ctx, req.ID)
+func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserResetPasswordRequest) error {
+	_, err := s.userRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			return err
@@ -57,11 +63,6 @@ func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserUpdatePas
 
 		s.logger.Errorw("failed to get user by ID", "userID", req.ID, "error", err)
 		return response.ErrInternalServerError
-	}
-
-	if err := auth.VerifyPassword(user.Password, req.OldPassword); err != nil {
-		s.logger.Errorw("failed to verify password", "userID", req.ID, "error", err)
-		return domain.ErrInvalidPassword
 	}
 
 	hashedPassword, err := auth.HashPassword(req.NewPassword)
@@ -76,4 +77,13 @@ func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserUpdatePas
 	}
 
 	return nil
+}
+
+func (s *AuthService) RefreshToken(ctx context.Context, token string) (string, error) {
+	claims, err := s.tokenManager.ParseToken(token)
+	if err != nil {
+		return "", err
+	}
+
+	return s.tokenManager.GenerateToken(claims.UserID)
 }
