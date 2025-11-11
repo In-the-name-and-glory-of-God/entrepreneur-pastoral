@@ -63,6 +63,7 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 		})
 
 		r.Route("/user", func(r chi.Router) {
+			r.Use(srv.symphony.Middleware.Authenticate)
 			srv.symphony.User.RegisterRoutes(r)
 		})
 	})

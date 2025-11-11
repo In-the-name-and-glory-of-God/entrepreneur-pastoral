@@ -190,7 +190,7 @@ func (s *UserService) GetByID(ctx context.Context, userID uuid.UUID) (*dto.UserG
 // List retrieves a paginated and filtered list of users.
 func (s *UserService) List(ctx context.Context, filter *dto.UserListRequest) (*dto.UserListResponse, error) {
 	// 1. Get the list of users
-	users, err := s.userRepo.Find(ctx, filter)
+	users, err := s.userRepo.List(ctx, filter)
 	if err != nil && err != domain.ErrUserNotFound {
 		s.logger.Errorw("failed to list users", "error", err)
 		return nil, response.ErrInternalServerError
@@ -214,21 +214,21 @@ func (s *UserService) List(ctx context.Context, filter *dto.UserListRequest) (*d
 
 // --- Flag Management Methods ---
 
+// VerifyEmail sets the user's is_verified flag.
+func (s *UserService) VerifyEmail(ctx context.Context, userID uuid.UUID) error {
+	return s.updateUserProperty(ctx, userID, func(user *domain.User) (domain.UserProperty, any) {
+		user.IsVerified = true
+
+		return domain.IsVerified, true
+	})
+}
+
 // UpdateActiveStatus sets the user's is_active flag.
 func (s *UserService) UpdateActiveStatus(ctx context.Context, req *dto.UserUpdatePropertyRequest) error {
 	return s.updateUserProperty(ctx, req.ID, func(user *domain.User) (domain.UserProperty, any) {
 		user.IsActive = req.Value
 
 		return domain.IsActive, req.Value
-	})
-}
-
-// VerifyUser sets the user's is_verified flag.
-func (s *UserService) VerifyUser(ctx context.Context, req *dto.UserUpdatePropertyRequest) error {
-	return s.updateUserProperty(ctx, req.ID, func(user *domain.User) (domain.UserProperty, any) {
-		user.IsVerified = req.Value
-
-		return domain.IsVerified, req.Value
 	})
 }
 

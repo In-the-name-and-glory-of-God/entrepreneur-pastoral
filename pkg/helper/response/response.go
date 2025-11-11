@@ -124,6 +124,11 @@ func InternalServerError(w http.ResponseWriter, message string) {
 	Error(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", message, nil)
 }
 
+// NotImplemented writes a 501 Not Implemented response
+func NotImplemented(w http.ResponseWriter, message string) {
+	Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", message, nil)
+}
+
 // SuccessWithMeta writes a successful JSON response with metadata (useful for pagination)
 func SuccessWithMeta(w http.ResponseWriter, statusCode int, message string, data interface{}, meta *Meta) {
 	JSON(w, statusCode, Response{

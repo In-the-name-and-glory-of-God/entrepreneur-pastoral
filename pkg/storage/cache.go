@@ -2,17 +2,25 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
+var (
+	ErrCacheMiss = errors.New("cache miss")
+)
+
 type CacheStorage interface {
 	BuildKey(prefix CachePrefix, data ...string) string
 	Get(ctx context.Context, key string, dest any) error
 	GetAndDel(ctx context.Context, key string, dest any) error
+	GetString(ctx context.Context, key string) (string, error)
+	GetStringAndDel(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value any, expiration time.Duration) error
+	SetString(ctx context.Context, key string, value string, expiration time.Duration) error
 	Del(ctx context.Context, key string) error
 	Scan(ctx context.Context, match string) ([]string, error)
 	Exists(ctx context.Context, key string) (bool, error)
@@ -22,12 +30,21 @@ type CachePrefix uint8
 
 const (
 	CACHE_PREFIX_SESSION CachePrefix = iota
+	CACHE_PREFIX_EMAIL_VERIFICATION
+	CACHE_PREFIX_PASSWORD_RESET
+	CACHE_PREFIX_REFRESH_TOKEN
 )
 
 func (p CachePrefix) String() string {
 	switch p {
 	case CACHE_PREFIX_SESSION:
 		return "session"
+	case CACHE_PREFIX_EMAIL_VERIFICATION:
+		return "email_verification"
+	case CACHE_PREFIX_PASSWORD_RESET:
+		return "password_reset"
+	case CACHE_PREFIX_REFRESH_TOKEN:
+		return "refresh_token"
 	default:
 		return ""
 	}
@@ -83,6 +100,28 @@ func (c Cache) GetAndDel(ctx context.Context, key string, dest any) error {
 	return nil
 }
 
+func (c Cache) GetString(ctx context.Context, key string) (string, error) {
+	val, err := c.client.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", ErrCacheMiss
+		}
+
+		return "", err
+	}
+
+	return val, nil
+}
+
+func (c Cache) GetStringAndDel(ctx context.Context, key string) (string, error) {
+	val, err := c.client.GetDel(ctx, key).Result()
+	if err != nil {
+		return "", err
+	}
+
+	return val, nil
+}
+
 func (c Cache) Set(ctx context.Context, key string, val any, expire time.Duration) error {
 	// Use TxPipelined to execute HSet and Expire atomically
 	// This prevents memory leaks if the application crashes between the two operations
@@ -101,6 +140,14 @@ func (c Cache) Set(ctx context.Context, key string, val any, expire time.Duratio
 	})
 
 	return err
+}
+
+func (c Cache) SetString(ctx context.Context, key string, value string, expiration time.Duration) error {
+	if err := c.client.Set(ctx, key, value, expiration).Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c Cache) Del(ctx context.Context, key string) error {
