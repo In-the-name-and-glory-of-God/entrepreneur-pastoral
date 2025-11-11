@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/middleware"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/application"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/http"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/persistence"
@@ -12,8 +13,9 @@ import (
 )
 
 type Symphony struct {
-	Auth *http.AuthHandler
-	User *http.UserHandler
+	Auth       *http.AuthHandler
+	User       *http.UserHandler
+	Middleware *middleware.Middleware
 }
 
 type Orchestrator struct {
@@ -46,8 +48,12 @@ func (o *Orchestrator) Compose() *Symphony {
 	authHandler := http.NewAuthHandler(o.log, o.cache, authService, userService)
 	userHandler := http.NewUserHandler(o.log, userService)
 
+	// Middleware
+	middleware := middleware.NewMiddleware(userPersistence, o.tokenManager)
+
 	return &Symphony{
-		Auth: authHandler,
-		User: userHandler,
+		Auth:       authHandler,
+		User:       userHandler,
+		Middleware: middleware,
 	}
 }
