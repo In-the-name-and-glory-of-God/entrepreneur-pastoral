@@ -78,7 +78,7 @@ type (
 func Load() Config {
 	return Config{
 		Application: Application{
-			Secret: env.GetString("APP_SECRET", "322ce8d7-25d5-4340-a96e-32ebf6a00299"),
+			Secret: env.GetString("APP_SECRET", "my-supa-dupa-app-secret-yes-it-is-okay"),
 			Name:   env.GetString("APP_NAME", "entrepreneur-pastoral"),
 			Env:    env.GetString("APP_ENV", "development"),
 		},
