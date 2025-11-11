@@ -115,7 +115,7 @@ func (m *MockUserRepository) GetAllByIsEntrepreneur(ctx context.Context, isEntre
 	return args.Get(0).([]*domain.User), args.Error(1)
 }
 
-func (m *MockUserRepository) Find(ctx context.Context, filter *domain.UserFilters) ([]*domain.User, error) {
+func (m *MockUserRepository) List(ctx context.Context, filter *domain.UserFilters) ([]*domain.User, error) {
 	args := m.Called(ctx, filter)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -659,16 +659,11 @@ func TestUserService_UpdateActiveStatus_UpdateError(t *testing.T) {
 }
 
 // Test VerifyUser
-func TestUserService_VerifyUser_Success(t *testing.T) {
+func TestUserService_VerifyEmail_Success(t *testing.T) {
 	service, mockUserRepo, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
-	req := &dto.UserUpdatePropertyRequest{
-		ID:    userID,
-		Value: true,
-	}
-
 	existingUser := &domain.User{
 		ID:         userID,
 		IsVerified: false,
@@ -677,7 +672,7 @@ func TestUserService_VerifyUser_Success(t *testing.T) {
 	mockUserRepo.On("GetByID", ctx, userID).Return(existingUser, nil)
 	mockUserRepo.On("UpdateProperty", ctx, userID, domain.IsVerified, true).Return(nil)
 
-	err := service.VerifyUser(ctx, req)
+	err := service.VerifyEmail(ctx, userID)
 
 	assert.NoError(t, err)
 	mockUserRepo.AssertExpectations(t)

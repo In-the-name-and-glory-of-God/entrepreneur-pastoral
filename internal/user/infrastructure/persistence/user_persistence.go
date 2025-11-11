@@ -198,7 +198,7 @@ func (r *UserPersistence) GetByDocumentID(ctx context.Context, documentID string
 	return &user, nil
 }
 
-func (r *UserPersistence) Find(ctx context.Context, filter *domain.UserFilters) ([]*domain.User, error) {
+func (r *UserPersistence) List(ctx context.Context, filter *domain.UserFilters) ([]*domain.User, error) {
 	queryBuilder := r.psql.Select("*").From("users")
 	queryBuilder = r.buildFilterQuery(queryBuilder, filter)
 	queryBuilder = queryBuilder.OrderBy("created_at DESC")
@@ -212,7 +212,7 @@ func (r *UserPersistence) Find(ctx context.Context, filter *domain.UserFilters) 
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build find query: %w", err)
+		return nil, fmt.Errorf("failed to build list query: %w", err)
 	}
 
 	var users []*domain.User
@@ -221,7 +221,7 @@ func (r *UserPersistence) Find(ctx context.Context, filter *domain.UserFilters) 
 			return nil, domain.ErrUserNotFound
 		}
 
-		return nil, fmt.Errorf("failed to execute find query: %w", err)
+		return nil, fmt.Errorf("failed to execute list query: %w", err)
 	}
 
 	return users, nil

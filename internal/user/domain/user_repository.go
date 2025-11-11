@@ -20,6 +20,6 @@ type UserRepository interface {
 	GetAllByIsVerified(ctx context.Context, isVerified bool) ([]*User, error)
 	GetAllByIsCatholic(ctx context.Context, isCatholic bool) ([]*User, error)
 	GetAllByIsEntrepreneur(ctx context.Context, isEntrepreneur bool) ([]*User, error)
-	Find(ctx context.Context, filter *UserFilters) ([]*User, error)
+	List(ctx context.Context, filter *UserFilters) ([]*User, error)
 	Count(ctx context.Context, filter *UserFilters) (int, error)
 }

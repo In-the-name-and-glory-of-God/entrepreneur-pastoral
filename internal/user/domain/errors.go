@@ -9,9 +9,6 @@ var (
 	ErrInvalidPassword    = errors.New("invalid password")
 	ErrUserInactive       = errors.New("user account is not active")
 	ErrEmailNotVerified   = errors.New("email address is not verified")
-	ErrInvalidToken       = errors.New("invalid or expired token")
-	ErrTokenExpired       = errors.New("token has expired")
-	ErrUnauthorized       = errors.New("unauthorized access")
 )
 
 // User management errors
