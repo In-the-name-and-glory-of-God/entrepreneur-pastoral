@@ -25,16 +25,6 @@ func NewUserHandler(logger *zap.SugaredLogger, userService *application.UserServ
 	}
 }
 
-func (h *UserHandler) RegisterRoutes(r chi.Router) {
-	r.Get("/{id}", h.GetByID)
-	r.Put("/{id}", h.Update)
-	r.Post("/list", h.List)
-	// Flags handlers
-	r.Patch("/flag/is_active/{id}", h.SetIsActive)
-	r.Patch("/flag/is_catholic/{id}", h.SetIsCatholic)
-	r.Patch("/flag/is_entrepreneur/{id}", h.SetIsEntrepreneur)
-}
-
 func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	uuid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
