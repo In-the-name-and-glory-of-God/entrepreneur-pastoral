@@ -14,6 +14,7 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/database"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/logger"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/queue"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"go.uber.org/zap"
 )
@@ -42,8 +43,20 @@ func main() {
 	cache := storage.NewCacheStorage(client)
 	log.Info("redis connection established")
 
+	rabbitConn, err := database.NewRabbitMQConn(cfg.RabbitMQ)
+	if err != nil {
+		log.Fatal("failed to connect to rabbitmq", err)
+	}
+	defer rabbitConn.Close()
+	queueService, err := queue.NewQueue(rabbitConn)
+	if err != nil {
+		log.Fatal("failed to create queue service", err)
+	}
+	defer queueService.Close()
+	log.Info("rabbitmq connection established")
+
 	tokenManager := auth.NewTokenManager(cfg.Application.Secret)
-	orchestrator := orchestrator.New(cfg, log, db, cache, tokenManager)
+	orchestrator := orchestrator.New(cfg, log, db, cache, queueService, tokenManager)
 	symphony := orchestrator.Compose()
 
 	router := router.NewServerRouter(cfg, symphony)

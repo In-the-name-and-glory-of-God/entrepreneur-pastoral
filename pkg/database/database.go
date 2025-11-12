@@ -7,6 +7,7 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -46,4 +47,13 @@ func NewRedisClient(cfg config.Redis) (*redis.Client, error) {
 	}
 
 	return client, nil
+}
+
+func NewRabbitMQConn(cfg config.RabbitMQ) (*amqp.Connection, error) {
+	conn, err := amqp.Dial(cfg.DSN())
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
