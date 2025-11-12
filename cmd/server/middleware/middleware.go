@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
@@ -88,4 +89,30 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 			},
 		)))
 	})
+}
+
+func (m *Middleware) Authorize(allowedRoles ...int16) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userCtx := r.Context().Value(UserContextKey)
+			if userCtx == nil {
+				response.Unauthorized(w, "User not authenticated")
+				return
+			}
+
+			user, ok := userCtx.(*dto.UserAsContext)
+			if !ok {
+				response.Unauthorized(w, "User not authenticated")
+				return
+			}
+
+			// Check if user's role is in allowedRoles
+			if slices.Contains(allowedRoles, user.RoleID) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			response.Forbidden(w, "User does not have permission to access this resource")
+		})
+	}
 }

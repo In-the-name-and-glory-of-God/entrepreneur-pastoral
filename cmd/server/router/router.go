@@ -59,12 +59,23 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
-			srv.symphony.Auth.RegisterRoutes(r)
+			r.Put("/register", srv.symphony.Auth.Register)
+			r.Post("/login", srv.symphony.Auth.Login)
+			r.Post("/password/reset", srv.symphony.Auth.ResetPassword)
+			r.Patch("/password/reset/{id}/{token}", srv.symphony.Auth.ResetPassword)
+			r.Patch("/email/verify/{token}", srv.symphony.Auth.VerifyEmail)
+			r.Get("/refresh", srv.symphony.Auth.Refresh)
 		})
 
 		r.Route("/user", func(r chi.Router) {
 			r.Use(srv.symphony.Middleware.Authenticate)
-			srv.symphony.User.RegisterRoutes(r)
+			r.Get("/{id}", srv.symphony.User.GetByID)
+			r.Put("/{id}", srv.symphony.User.Update)
+			r.Post("/list", srv.symphony.User.List)
+			// Flags handlers
+			r.Patch("/flag/is_active/{id}", srv.symphony.User.SetIsActive)
+			r.Patch("/flag/is_catholic/{id}", srv.symphony.User.SetIsCatholic)
+			r.Patch("/flag/is_entrepreneur/{id}", srv.symphony.User.SetIsEntrepreneur)
 		})
 	})
 
