@@ -33,15 +33,6 @@ func NewAuthHandler(logger *zap.SugaredLogger, cache storage.CacheStorage, authS
 	}
 }
 
-func (h *AuthHandler) RegisterRoutes(r chi.Router) {
-	r.Put("/register", h.Register)
-	r.Post("/login", h.Login)
-	r.Post("/password/reset", h.ResetPassword)
-	r.Patch("/password/reset/{id}/{token}", h.ResetPassword)
-	r.Patch("/email/verify/{token}", h.VerifyEmail)
-	r.Get("/refresh", h.Refresh)
-}
-
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req dto.UserRegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
