@@ -23,15 +23,17 @@ type Orchestrator struct {
 	log          *zap.SugaredLogger
 	db           *sqlx.DB
 	cache        storage.CacheStorage
+	queue        storage.QueueStorage
 	tokenManager *auth.TokenManager
 }
 
-func New(cfg config.Config, log *zap.SugaredLogger, db *sqlx.DB, redis storage.CacheStorage, tokenManager *auth.TokenManager) *Orchestrator {
+func New(cfg config.Config, log *zap.SugaredLogger, db *sqlx.DB, redis storage.CacheStorage, queue storage.QueueStorage, tokenManager *auth.TokenManager) *Orchestrator {
 	return &Orchestrator{
 		cfg:          cfg,
 		log:          log,
 		db:           db,
 		cache:        redis,
+		queue:        queue,
 		tokenManager: tokenManager,
 	}
 }
