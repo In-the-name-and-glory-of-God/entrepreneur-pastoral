@@ -90,6 +90,11 @@ func (c Cache) GetAndDel(ctx context.Context, key string, dest any) error {
 
 	// Convert the result to a slice and scan into dest
 	if resultSlice, ok := result.([]interface{}); ok {
+		// Check if the slice is empty (key didn't exist)
+		if len(resultSlice) == 0 {
+			return nil
+		}
+
 		// Use redis.NewSliceResult to create a compatible result for Scan
 		cmd := redis.NewSliceResult(resultSlice, nil)
 		if err := cmd.Scan(dest); err != nil {
