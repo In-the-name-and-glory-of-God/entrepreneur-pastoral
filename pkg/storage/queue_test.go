@@ -1,4 +1,4 @@
-package queue
+package storage
 
 import (
 	"context"
@@ -25,12 +25,6 @@ func (m *MockConnection) Channel() (*amqp.Channel, error) {
 func (m *MockConnection) Close() error {
 	args := m.Called()
 	return args.Error(0)
-}
-
-func TestNewQueue_Success(t *testing.T) {
-	// This test would require a real RabbitMQ connection or more sophisticated mocking
-	// For now, we'll just test the error cases
-	t.Skip("Requires RabbitMQ connection or advanced mocking")
 }
 
 func TestRabbitMQ_Publish_ClosedChannel(t *testing.T) {

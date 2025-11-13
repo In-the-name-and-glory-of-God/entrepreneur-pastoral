@@ -7,7 +7,6 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/persistence"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/queue"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
@@ -24,11 +23,11 @@ type Orchestrator struct {
 	log          *zap.SugaredLogger
 	db           *sqlx.DB
 	cache        storage.CacheStorage
-	queue        queue.Queue
+	queue        storage.QueueStorage
 	tokenManager *auth.TokenManager
 }
 
-func New(cfg config.Config, log *zap.SugaredLogger, db *sqlx.DB, redis storage.CacheStorage, queue queue.Queue, tokenManager *auth.TokenManager) *Orchestrator {
+func New(cfg config.Config, log *zap.SugaredLogger, db *sqlx.DB, redis storage.CacheStorage, queue storage.QueueStorage, tokenManager *auth.TokenManager) *Orchestrator {
 	return &Orchestrator{
 		cfg:          cfg,
 		log:          log,

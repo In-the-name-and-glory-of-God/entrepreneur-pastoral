@@ -14,7 +14,6 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/database"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/logger"
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/queue"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"go.uber.org/zap"
 )
@@ -24,39 +23,37 @@ var (
 	log *zap.SugaredLogger
 )
 
+func failOnError(err error, msg string) {
+	if err != nil {
+		log.Fatal(msg, err)
+	}
+}
+
 func main() {
 	cfg = config.Load()
 	log = logger.New(cfg.Application)
 
 	db, err := database.NewPostgresConn(cfg.Database)
-	if err != nil {
-		log.Fatal("failed to connect to database", err)
-	}
+	failOnError(err, "failed to connect to database")
 	defer db.Close()
 	log.Info("database connection established")
 
 	client, err := database.NewRedisClient(cfg.Redis)
-	if err != nil {
-		log.Fatal("failed to connect to redis", err)
-	}
+	failOnError(err, "failed to connect to redis")
 	defer client.Close()
 	cache := storage.NewCacheStorage(client)
 	log.Info("redis connection established")
 
-	rabbitConn, err := database.NewRabbitMQConn(cfg.RabbitMQ)
-	if err != nil {
-		log.Fatal("failed to connect to rabbitmq", err)
-	}
-	defer rabbitConn.Close()
-	queueService, err := queue.NewQueue(rabbitConn)
-	if err != nil {
-		log.Fatal("failed to create queue service", err)
-	}
-	defer queueService.Close()
+	conn, err := database.NewRabbitMQConn(cfg.RabbitMQ)
+	failOnError(err, "failed to connect to rabbitmq")
+	defer conn.Close()
+	queue, err := storage.NewQueueStorage(conn, log)
+	failOnError(err, "failed to create queue service")
+	defer queue.Close()
 	log.Info("rabbitmq connection established")
 
 	tokenManager := auth.NewTokenManager(cfg.Application.Secret)
-	orchestrator := orchestrator.New(cfg, log, db, cache, queueService, tokenManager)
+	orchestrator := orchestrator.New(cfg, log, db, cache, queue, tokenManager)
 	symphony := orchestrator.Compose()
 
 	router := router.NewServerRouter(cfg, symphony)

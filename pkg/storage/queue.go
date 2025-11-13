@@ -1,17 +1,18 @@
-package queue
+package storage
 
 import (
 	"context"
 	"errors"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.uber.org/zap"
 )
 
 var (
 	ErrQueueClosed = errors.New("queue connection closed")
 )
 
-type Queue interface {
+type QueueStorage interface {
 	Publish(ctx context.Context, exchange, routingKey string, body []byte) error
 	Consume(queueName string, handler func([]byte) error) error
 	DeclareQueue(queueName string) error
@@ -21,9 +22,10 @@ type Queue interface {
 type RabbitMQ struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
+	logger  *zap.SugaredLogger
 }
 
-func NewQueue(conn *amqp.Connection) (Queue, error) {
+func NewQueueStorage(conn *amqp.Connection, logger *zap.SugaredLogger) (QueueStorage, error) {
 	channel, err := conn.Channel()
 	if err != nil {
 		return nil, err
@@ -32,6 +34,7 @@ func NewQueue(conn *amqp.Connection) (Queue, error) {
 	return &RabbitMQ{
 		conn:    conn,
 		channel: channel,
+		logger:  logger,
 	}, nil
 }
 
@@ -68,6 +71,7 @@ func (r *RabbitMQ) Consume(queueName string, handler func([]byte) error) error {
 		nil,   // args
 	)
 	if err != nil {
+		r.logger.Error("Failed to register consumer", "queueName", queueName, "error", err)
 		return err
 	}
 
@@ -75,10 +79,14 @@ func (r *RabbitMQ) Consume(queueName string, handler func([]byte) error) error {
 		for msg := range msgs {
 			if err := handler(msg.Body); err != nil {
 				// Negative acknowledgment - message will be requeued
-				msg.Nack(false, true)
-			} else {
-				// Positive acknowledgment - message will be removed from queue
-				msg.Ack(false)
+				if err := msg.Nack(false, true); err != nil {
+					r.logger.Error("Failed to nack message", "queueName", queueName, "error", err)
+				}
+				continue
+			}
+
+			if err := msg.Ack(false); err != nil {
+				r.logger.Error("Failed to ack message", "queueName", queueName, "error", err)
 			}
 		}
 	}()
