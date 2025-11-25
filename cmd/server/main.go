@@ -10,6 +10,7 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/orchestrator"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/router"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/worker"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/database"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
@@ -51,6 +52,9 @@ func main() {
 	failOnError(err, "failed to create queue service")
 	defer queue.Close()
 	log.Info("rabbitmq connection established")
+
+	w := worker.NewWorker(queue, cfg, log)
+	go w.Start()
 
 	tokenManager := auth.NewTokenManager(cfg.Application.Secret)
 	orchestrator := orchestrator.New(cfg, log, db, cache, queue, tokenManager)
