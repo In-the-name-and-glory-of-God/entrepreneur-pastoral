@@ -15,6 +15,7 @@ type (
 		Database    Database
 		Redis       Redis
 		RabbitMQ    RabbitMQ
+		SMTP        SMTP
 	}
 
 	Application struct {
@@ -73,6 +74,14 @@ type (
 		User     string
 		Password string
 	}
+
+	SMTP struct {
+		Host     string
+		Port     int
+		User     string
+		Password string
+		From     string
+	}
 )
 
 func Load() Config {
@@ -125,6 +134,13 @@ func Load() Config {
 			User:     env.GetString("RABBITMQ_USER", "guest"),
 			Password: env.GetString("RABBITMQ_PASSWORD", "guest"),
 		},
+		SMTP: SMTP{
+			Host:     env.GetString("SMTP_HOST", "smtp.gmail.com"),
+			Port:     env.GetInt("SMTP_PORT", 587),
+			User:     env.GetString("SMTP_USER", "user@example.com"),
+			Password: env.GetString("SMTP_PASSWORD", "password"),
+			From:     env.GetString("SMTP_FROM", "user@example.com"),
+		},
 	}
 }
 
@@ -150,4 +166,8 @@ func (r Redis) Addr() string {
 
 func (r RabbitMQ) DSN() string {
 	return fmt.Sprintf("amqp://%s:%s@%s:%d/", r.User, r.Password, r.Host, r.Port)
+}
+
+func (e SMTP) DSN() string {
+	return fmt.Sprintf("%s:%d", e.Host, e.Port)
 }
