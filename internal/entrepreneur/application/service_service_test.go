@@ -7,6 +7,8 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
+	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -64,8 +66,12 @@ func (m *MockServiceRepository) Count(ctx context.Context, filter *domain.Servic
 func TestServiceService_Create(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockServiceRepository)
-	service := NewServiceService(logger, mockRepo)
-	ctx := context.Background()
+	mockBusinessRepo := new(MockBusinessRepository)
+	service := NewServiceService(logger, mockRepo, mockBusinessRepo)
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
 
 	req := &dto.ServiceCreateRequest{
 		BusinessID:  uuid.New(),
@@ -75,6 +81,7 @@ func TestServiceService_Create(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
+		mockBusinessRepo.On("GetByID", ctx, req.BusinessID).Return(&domain.Business{ID: req.BusinessID, UserID: userID}, nil)
 		mockRepo.On("Create", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Service")).Return(nil)
 
 		result, err := service.Create(ctx, req)
@@ -83,10 +90,39 @@ func TestServiceService_Create(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, req.Name, result.Name)
 		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
 	})
 
-	t.Run("Failure", func(t *testing.T) {
+	t.Run("Failure_BusinessNotFound", func(t *testing.T) {
+		mockBusinessRepo.ExpectedCalls = nil
 		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.On("GetByID", ctx, req.BusinessID).Return(nil, domain.ErrBusinessNotFound)
+
+		result, err := service.Create(ctx, req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Equal(t, domain.ErrBusinessNotFound, err)
+		mockBusinessRepo.AssertExpectations(t)
+	})
+
+	t.Run("Failure_Unauthorized", func(t *testing.T) {
+		mockBusinessRepo.ExpectedCalls = nil
+		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.On("GetByID", ctx, req.BusinessID).Return(&domain.Business{ID: req.BusinessID, UserID: uuid.New()}, nil)
+
+		result, err := service.Create(ctx, req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Equal(t, domain.ErrUnauthorized, err)
+		mockBusinessRepo.AssertExpectations(t)
+	})
+
+	t.Run("Failure_RepoError", func(t *testing.T) {
+		mockBusinessRepo.ExpectedCalls = nil
+		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.On("GetByID", ctx, req.BusinessID).Return(&domain.Business{ID: req.BusinessID, UserID: userID}, nil)
 		mockRepo.On("Create", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Service")).Return(errors.New("db error"))
 
 		result, err := service.Create(ctx, req)
@@ -95,16 +131,22 @@ func TestServiceService_Create(t *testing.T) {
 		assert.Nil(t, result)
 		assert.Equal(t, response.ErrInternalServerError, err)
 		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
 	})
 }
 
 func TestServiceService_Update(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockServiceRepository)
-	service := NewServiceService(logger, mockRepo)
-	ctx := context.Background()
+	mockBusinessRepo := new(MockBusinessRepository)
+	service := NewServiceService(logger, mockRepo, mockBusinessRepo)
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
 
 	id := uuid.New()
+	businessID := uuid.New()
 	req := &dto.ServiceUpdateRequest{
 		ID:          id,
 		Name:        "Updated Service",
@@ -114,22 +156,26 @@ func TestServiceService_Update(t *testing.T) {
 
 	existingService := &domain.Service{
 		ID:          id,
+		BusinessID:  businessID,
 		Name:        "Old Service",
 		Description: "Old Desc",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.On("GetByID", ctx, id).Return(existingService, nil)
+		mockBusinessRepo.On("GetByID", ctx, businessID).Return(&domain.Business{ID: businessID, UserID: userID}, nil)
 		mockRepo.On("Update", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Service")).Return(nil)
 
 		err := service.Update(ctx, req)
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, id).Return(nil, domain.ErrServiceNotFound)
 
 		err := service.Update(ctx, req)
@@ -138,39 +184,71 @@ func TestServiceService_Update(t *testing.T) {
 		assert.Equal(t, domain.ErrServiceNotFound, err)
 		mockRepo.AssertExpectations(t)
 	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.ExpectedCalls = nil
+		mockRepo.On("GetByID", ctx, id).Return(existingService, nil)
+		mockBusinessRepo.On("GetByID", ctx, businessID).Return(&domain.Business{ID: businessID, UserID: uuid.New()}, nil)
+
+		err := service.Update(ctx, req)
+
+		assert.Error(t, err)
+		assert.Equal(t, domain.ErrUnauthorized, err)
+		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
+	})
 }
 
 func TestServiceService_Delete(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockServiceRepository)
-	service := NewServiceService(logger, mockRepo)
-	ctx := context.Background()
+	mockBusinessRepo := new(MockBusinessRepository)
+	service := NewServiceService(logger, mockRepo, mockBusinessRepo)
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
+
 	id := uuid.New()
+	businessID := uuid.New()
+	existingService := &domain.Service{
+		ID:         id,
+		BusinessID: businessID,
+	}
 
 	t.Run("Success", func(t *testing.T) {
+		mockRepo.On("GetByID", ctx, id).Return(existingService, nil)
+		mockBusinessRepo.On("GetByID", ctx, businessID).Return(&domain.Business{ID: businessID, UserID: userID}, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(nil)
 
 		err := service.Delete(ctx, id)
 
 		assert.NoError(t, err)
 		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
 	})
 
 	t.Run("Failure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockBusinessRepo.ExpectedCalls = nil
+		mockRepo.On("GetByID", ctx, id).Return(existingService, nil)
+		mockBusinessRepo.On("GetByID", ctx, businessID).Return(&domain.Business{ID: businessID, UserID: userID}, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(errors.New("db error"))
 
 		err := service.Delete(ctx, id)
 
 		assert.Error(t, err)
 		mockRepo.AssertExpectations(t)
+		mockBusinessRepo.AssertExpectations(t)
 	})
 }
 
 func TestServiceService_GetByID(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockServiceRepository)
-	service := NewServiceService(logger, mockRepo)
+	mockBusinessRepo := new(MockBusinessRepository)
+	service := NewServiceService(logger, mockRepo, mockBusinessRepo)
 	ctx := context.Background()
 	id := uuid.New()
 
@@ -205,7 +283,8 @@ func TestServiceService_GetByID(t *testing.T) {
 func TestServiceService_List(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockServiceRepository)
-	service := NewServiceService(logger, mockRepo)
+	mockBusinessRepo := new(MockBusinessRepository)
+	service := NewServiceService(logger, mockRepo, mockBusinessRepo)
 	ctx := context.Background()
 
 	req := &dto.ServiceListRequest{

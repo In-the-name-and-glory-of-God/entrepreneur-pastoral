@@ -7,6 +7,8 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
+	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -65,10 +67,13 @@ func TestBusinessService_Create(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
 	service := NewBusinessService(logger, mockRepo)
-	ctx := context.Background()
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
 
 	req := &dto.BusinessCreateRequest{
-		UserID:      uuid.New(),
+		UserID:      userID,
 		IndustryID:  1,
 		Name:        "Test Business",
 		Description: "Description",
@@ -103,7 +108,10 @@ func TestBusinessService_Update(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
 	service := NewBusinessService(logger, mockRepo)
-	ctx := context.Background()
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
 
 	id := uuid.New()
 	req := &dto.BusinessUpdateRequest{
@@ -117,6 +125,7 @@ func TestBusinessService_Update(t *testing.T) {
 
 	existingBusiness := &domain.Business{
 		ID:          id,
+		UserID:      userID,
 		Name:        "Old Name",
 		Description: "Old Desc",
 	}
@@ -141,16 +150,37 @@ func TestBusinessService_Update(t *testing.T) {
 		assert.Equal(t, domain.ErrBusinessNotFound, err)
 		mockRepo.AssertExpectations(t)
 	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		mockRepo.ExpectedCalls = nil
+		existingBusiness.UserID = uuid.New()
+		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
+
+		err := service.Update(ctx, req)
+
+		assert.Error(t, err)
+		assert.Equal(t, domain.ErrUnauthorized, err)
+		mockRepo.AssertExpectations(t)
+	})
 }
 
 func TestBusinessService_Delete(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
 	service := NewBusinessService(logger, mockRepo)
-	ctx := context.Background()
+
+	userID := uuid.New()
+	userCtx := &userDto.UserAsContext{ID: userID}
+	ctx := context.WithValue(context.Background(), auth.UserContextKey, userCtx)
+
 	id := uuid.New()
+	existingBusiness := &domain.Business{
+		ID:     id,
+		UserID: userID,
+	}
 
 	t.Run("Success", func(t *testing.T) {
+		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(nil)
 
 		err := service.Delete(ctx, id)
@@ -161,11 +191,24 @@ func TestBusinessService_Delete(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(errors.New("db error"))
 
 		err := service.Delete(ctx, id)
 
 		assert.Error(t, err)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Unauthorized", func(t *testing.T) {
+		mockRepo.ExpectedCalls = nil
+		existingBusiness.UserID = uuid.New()
+		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
+
+		err := service.Delete(ctx, id)
+
+		assert.Error(t, err)
+		assert.Equal(t, domain.ErrUnauthorized, err)
 		mockRepo.AssertExpectations(t)
 	})
 }

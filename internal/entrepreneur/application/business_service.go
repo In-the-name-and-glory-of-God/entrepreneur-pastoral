@@ -6,6 +6,8 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
+	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -24,8 +26,9 @@ func NewBusinessService(logger *zap.SugaredLogger, businessRepo domain.BusinessR
 }
 
 func (s *BusinessService) Create(ctx context.Context, req *dto.BusinessCreateRequest) (*domain.Business, error) {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
 	business := &domain.Business{
-		UserID:           req.UserID,
+		UserID:           userCtx.ID,
 		IndustryID:       req.IndustryID,
 		Name:             req.Name,
 		Description:      req.Description,
@@ -46,9 +49,14 @@ func (s *BusinessService) Create(ctx context.Context, req *dto.BusinessCreateReq
 }
 
 func (s *BusinessService) Update(ctx context.Context, req *dto.BusinessUpdateRequest) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
 	business, err := s.businessRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
 	}
 
 	business.IndustryID = req.IndustryID
@@ -70,6 +78,16 @@ func (s *BusinessService) Update(ctx context.Context, req *dto.BusinessUpdateReq
 }
 
 func (s *BusinessService) Delete(ctx context.Context, id uuid.UUID) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
+	business, err := s.businessRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
+	}
+
 	if err := s.businessRepo.Delete(nil, id); err != nil {
 		s.logger.Errorw("failed to delete business", "id", id, "error", err)
 		return response.ErrInternalServerError

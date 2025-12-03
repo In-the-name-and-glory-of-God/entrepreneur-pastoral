@@ -5,24 +5,42 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
+	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type ServiceService struct {
-	logger      *zap.SugaredLogger
-	serviceRepo domain.ServiceRepository
+	logger       *zap.SugaredLogger
+	serviceRepo  domain.ServiceRepository
+	businessRepo domain.BusinessRepository
 }
 
-func NewServiceService(logger *zap.SugaredLogger, serviceRepo domain.ServiceRepository) *ServiceService {
+func NewServiceService(logger *zap.SugaredLogger, serviceRepo domain.ServiceRepository, businessRepo domain.BusinessRepository) *ServiceService {
 	return &ServiceService{
-		logger:      logger,
-		serviceRepo: serviceRepo,
+		logger:       logger,
+		serviceRepo:  serviceRepo,
+		businessRepo: businessRepo,
 	}
 }
 
 func (s *ServiceService) Create(ctx context.Context, req *dto.ServiceCreateRequest) (*domain.Service, error) {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, req.BusinessID)
+	if err != nil {
+		if err == domain.ErrBusinessNotFound {
+			return nil, domain.ErrBusinessNotFound
+		}
+		return nil, err
+	}
+
+	if business.UserID != userCtx.ID {
+		return nil, domain.ErrUnauthorized
+	}
+
 	service := &domain.Service{
 		BusinessID:  req.BusinessID,
 		Name:        req.Name,
@@ -39,9 +57,20 @@ func (s *ServiceService) Create(ctx context.Context, req *dto.ServiceCreateReque
 }
 
 func (s *ServiceService) Update(ctx context.Context, req *dto.ServiceUpdateRequest) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
 	service, err := s.serviceRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
+	}
+
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, service.BusinessID)
+	if err != nil {
+		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
 	}
 
 	service.Name = req.Name
@@ -57,6 +86,22 @@ func (s *ServiceService) Update(ctx context.Context, req *dto.ServiceUpdateReque
 }
 
 func (s *ServiceService) Delete(ctx context.Context, id uuid.UUID) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
+	service, err := s.serviceRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, service.BusinessID)
+	if err != nil {
+		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
+	}
+
 	if err := s.serviceRepo.Delete(nil, id); err != nil {
 		s.logger.Errorw("failed to delete service", "id", id, "error", err)
 		return response.ErrInternalServerError

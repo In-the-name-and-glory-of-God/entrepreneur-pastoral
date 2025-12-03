@@ -6,24 +6,42 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
+	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type ProductService struct {
-	logger      *zap.SugaredLogger
-	productRepo domain.ProductRepository
+	logger       *zap.SugaredLogger
+	productRepo  domain.ProductRepository
+	businessRepo domain.BusinessRepository
 }
 
-func NewProductService(logger *zap.SugaredLogger, productRepo domain.ProductRepository) *ProductService {
+func NewProductService(logger *zap.SugaredLogger, productRepo domain.ProductRepository, businessRepo domain.BusinessRepository) *ProductService {
 	return &ProductService{
-		logger:      logger,
-		productRepo: productRepo,
+		logger:       logger,
+		productRepo:  productRepo,
+		businessRepo: businessRepo,
 	}
 }
 
 func (s *ProductService) Create(ctx context.Context, req *dto.ProductCreateRequest) (*domain.Product, error) {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, req.BusinessID)
+	if err != nil {
+		if err == domain.ErrBusinessNotFound {
+			return nil, domain.ErrBusinessNotFound
+		}
+		return nil, err
+	}
+
+	if business.UserID != userCtx.ID {
+		return nil, domain.ErrUnauthorized
+	}
+
 	product := &domain.Product{
 		BusinessID:  req.BusinessID,
 		Name:        req.Name,
@@ -42,9 +60,20 @@ func (s *ProductService) Create(ctx context.Context, req *dto.ProductCreateReque
 }
 
 func (s *ProductService) Update(ctx context.Context, req *dto.ProductUpdateRequest) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
 	product, err := s.productRepo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
+	}
+
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, product.BusinessID)
+	if err != nil {
+		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
 	}
 
 	product.Name = req.Name
@@ -62,6 +91,22 @@ func (s *ProductService) Update(ctx context.Context, req *dto.ProductUpdateReque
 }
 
 func (s *ProductService) Delete(ctx context.Context, id uuid.UUID) error {
+	userCtx := ctx.Value(auth.UserContextKey).(*userDto.UserAsContext)
+	product, err := s.productRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Check if business belongs to user
+	business, err := s.businessRepo.GetByID(ctx, product.BusinessID)
+	if err != nil {
+		return err
+	}
+
+	if business.UserID != userCtx.ID {
+		return domain.ErrUnauthorized
+	}
+
 	if err := s.productRepo.Delete(nil, id); err != nil {
 		s.logger.Errorw("failed to delete product", "id", id, "error", err)
 		return response.ErrInternalServerError
