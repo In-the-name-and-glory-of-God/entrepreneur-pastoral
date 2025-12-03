@@ -136,8 +136,6 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 				r.Get("/{id}", srv.symphony.Job.GetByID)
 
 				r.Group(func(r chi.Router) {
-					r.Use(srv.symphony.Middleware.Authenticate)
-					r.Use(srv.symphony.Middleware.UserIsCatholic)
 					r.Use(srv.symphony.Middleware.UserIsEntrepreneur)
 					r.Post("/", srv.symphony.Job.Create)
 					r.Put("/{id}", srv.symphony.Job.Update)

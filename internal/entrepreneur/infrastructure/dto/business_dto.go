@@ -6,15 +6,15 @@ import (
 )
 
 type BusinessCreateRequest struct {
-	UserID           uuid.UUID `json:"user_id"`
-	IndustryID       int16     `json:"industry_id"`
-	Name             string    `json:"name"`
-	Description      string    `json:"description"`
-	Email            string    `json:"email"`
-	PhoneCountryCode string    `json:"phone_country_code"`
-	PhoneNumber      string    `json:"phone_number"`
-	WebsiteURL       string    `json:"website_url"`
-	LogoURL          string    `json:"logo_url"`
+	UserID           uuid.UUID
+	IndustryID       int16  `json:"industry_id"`
+	Name             string `json:"name"`
+	Description      string `json:"description"`
+	Email            string `json:"email"`
+	PhoneCountryCode string `json:"phone_country_code"`
+	PhoneNumber      string `json:"phone_number"`
+	WebsiteURL       string `json:"website_url"`
+	LogoURL          string `json:"logo_url"`
 }
 
 type BusinessUpdateRequest struct {

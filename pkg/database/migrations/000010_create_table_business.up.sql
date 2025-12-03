@@ -25,10 +25,10 @@ CREATE TABLE IF NOT EXISTS business (
         FOREIGN KEY(user_id)
         REFERENCES users(id)
         ON DELETE RESTRICT -- Prevents deleting a user if businesses are still assigned to it
-        ON UPDATE CASCADE
+        ON UPDATE CASCADE,
     CONSTRAINT fk_industry
         FOREIGN KEY(industry_id)
         REFERENCES industries(id)
         ON DELETE RESTRICT -- Prevents deleting an industry if businesses are still assigned to it
-        ON UPDATE CASCADE,
+        ON UPDATE CASCADE
 );
