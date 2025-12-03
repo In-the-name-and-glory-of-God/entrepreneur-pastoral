@@ -73,9 +73,75 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 			r.Put("/{id}", srv.symphony.User.Update)
 			r.Post("/list", srv.symphony.User.List)
 			// Flags handlers
-			r.Patch("/flag/is_active/{id}", srv.symphony.User.SetIsActive)
-			r.Patch("/flag/is_catholic/{id}", srv.symphony.User.SetIsCatholic)
-			r.Patch("/flag/is_entrepreneur/{id}", srv.symphony.User.SetIsEntrepreneur)
+			r.Route("/{id}/flag", func(r chi.Router) {
+				r.Patch("/active", srv.symphony.User.SetIsActive)
+				r.Patch("/catholic", srv.symphony.User.SetIsCatholic)
+				r.Patch("/entrepreneur", srv.symphony.User.SetIsEntrepreneur)
+			})
+		})
+
+		r.Route("/entrepreneur", func(r chi.Router) {
+			r.Route("/business", func(r chi.Router) {
+				// Public routes
+				r.Post("/list", srv.symphony.Business.List)
+				r.Get("/{id}", srv.symphony.Business.GetByID)
+
+				// Authenticated routes
+				r.Group(func(r chi.Router) {
+					r.Use(srv.symphony.Middleware.Authenticate)
+					r.Use(srv.symphony.Middleware.UserIsCatholic)
+					r.Use(srv.symphony.Middleware.UserIsEntrepreneur)
+					r.Post("/", srv.symphony.Business.Create)
+					r.Put("/{id}", srv.symphony.Business.Update)
+					r.Delete("/{id}", srv.symphony.Business.Delete)
+				})
+			})
+
+			r.Route("/product", func(r chi.Router) {
+				// Public routes
+				r.Post("/list", srv.symphony.Product.List)
+				r.Get("/{id}", srv.symphony.Product.GetByID)
+
+				// Authenticated routes
+				r.Group(func(r chi.Router) {
+					r.Use(srv.symphony.Middleware.Authenticate)
+					r.Use(srv.symphony.Middleware.UserIsCatholic)
+					r.Use(srv.symphony.Middleware.UserIsEntrepreneur)
+					r.Post("/", srv.symphony.Product.Create)
+					r.Put("/{id}", srv.symphony.Product.Update)
+					r.Delete("/{id}", srv.symphony.Product.Delete)
+				})
+			})
+
+			r.Route("/service", func(r chi.Router) {
+				// Public routes
+				r.Post("/list", srv.symphony.Service.List)
+				r.Get("/{id}", srv.symphony.Service.GetByID)
+
+				// Authenticated routes
+				r.Group(func(r chi.Router) {
+					r.Use(srv.symphony.Middleware.Authenticate)
+					r.Use(srv.symphony.Middleware.UserIsCatholic)
+					r.Use(srv.symphony.Middleware.UserIsEntrepreneur)
+					r.Post("/", srv.symphony.Service.Create)
+					r.Put("/{id}", srv.symphony.Service.Update)
+					r.Delete("/{id}", srv.symphony.Service.Delete)
+				})
+			})
+
+			r.Route("/job", func(r chi.Router) {
+				r.Use(srv.symphony.Middleware.Authenticate)
+				r.Use(srv.symphony.Middleware.UserIsCatholic)
+				r.Post("/list", srv.symphony.Job.List)
+				r.Get("/{id}", srv.symphony.Job.GetByID)
+
+				r.Group(func(r chi.Router) {
+					r.Use(srv.symphony.Middleware.UserIsEntrepreneur)
+					r.Post("/", srv.symphony.Job.Create)
+					r.Put("/{id}", srv.symphony.Job.Update)
+					r.Delete("/{id}", srv.symphony.Job.Delete)
+				})
+			})
 		})
 	})
 

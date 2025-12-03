@@ -13,10 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type contextKey string
-
-const UserContextKey contextKey = "user"
-
 type Middleware struct {
 	UserPersistence domain.UserRepository
 	TokenManager    *auth.TokenManager
@@ -81,11 +77,13 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(context.WithValue(
 			r.Context(),
-			UserContextKey,
+			auth.UserContextKey,
 			&dto.UserAsContext{
-				ID:     user.ID,
-				Email:  user.Email,
-				RoleID: user.RoleID,
+				ID:             user.ID,
+				Email:          user.Email,
+				RoleID:         user.RoleID,
+				IsCatholic:     user.IsCatholic,
+				IsEntrepreneur: user.IsEntrepreneur,
 			},
 		)))
 	})
@@ -94,7 +92,7 @@ func (m *Middleware) Authenticate(next http.Handler) http.Handler {
 func (m *Middleware) Authorize(allowedRoles ...int16) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userCtx := r.Context().Value(UserContextKey)
+			userCtx := r.Context().Value(auth.UserContextKey)
 			if userCtx == nil {
 				response.Unauthorized(w, "User not authenticated")
 				return
@@ -115,4 +113,50 @@ func (m *Middleware) Authorize(allowedRoles ...int16) func(http.Handler) http.Ha
 			response.Forbidden(w, "User does not have permission to access this resource")
 		})
 	}
+}
+
+func (m *Middleware) UserIsEntrepreneur(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userCtx := r.Context().Value(auth.UserContextKey)
+		if userCtx == nil {
+			response.Unauthorized(w, "User not authenticated")
+			return
+		}
+
+		user, ok := userCtx.(*dto.UserAsContext)
+		if !ok {
+			response.Unauthorized(w, "User not authenticated")
+			return
+		}
+
+		if !user.IsEntrepreneur {
+			response.Forbidden(w, "User is not an entrepreneur")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (m *Middleware) UserIsCatholic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userCtx := r.Context().Value(auth.UserContextKey)
+		if userCtx == nil {
+			response.Unauthorized(w, "User context missing")
+			return
+		}
+
+		user, ok := userCtx.(*dto.UserAsContext)
+		if !ok {
+			response.Unauthorized(w, "User not authenticated")
+			return
+		}
+
+		if !user.IsCatholic {
+			response.Forbidden(w, "User is not catholic")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
