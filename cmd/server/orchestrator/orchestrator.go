@@ -2,6 +2,9 @@ package orchestrator
 
 import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/middleware"
+	entrepreneurApp "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/application"
+	entrepreneurHttp "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/http"
+	entrepreneurPersist "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/persistence"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/application"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/http"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/persistence"
@@ -15,6 +18,10 @@ import (
 type Symphony struct {
 	Auth       *http.AuthHandler
 	User       *http.UserHandler
+	Business   *entrepreneurHttp.BusinessHandler
+	Product    *entrepreneurHttp.ProductHandler
+	Service    *entrepreneurHttp.ServiceHandler
+	Job        *entrepreneurHttp.JobHandler
 	Middleware *middleware.Middleware
 }
 
@@ -39,23 +46,47 @@ func New(cfg config.Config, log *zap.SugaredLogger, db *sqlx.DB, redis storage.C
 }
 
 func (o *Orchestrator) Compose() *Symphony {
-	// Persistence
+	// # Persistence
+	// ## User
 	userPersistence := persistence.NewUserPersistence(o.db)
 	notificationPreferencesPersistence := persistence.NewNotificationPreferencesPersistence(o.db)
 	jobProfilePersistence := persistence.NewJobProfilePersistence(o.db)
-	// Application
+	// ## Entrepreneur
+	businessPersistence := entrepreneurPersist.NewBusinessPersistence(o.db)
+	productPersistence := entrepreneurPersist.NewProductPersistence(o.db)
+	servicePersistence := entrepreneurPersist.NewServicePersistence(o.db)
+	jobPersistence := entrepreneurPersist.NewJobPersistence(o.db)
+
+	// # Application
+	// ## User
 	authService := application.NewAuthService(o.log, o.tokenManager, userPersistence)
 	userService := application.NewUserService(o.log, userPersistence, notificationPreferencesPersistence, jobProfilePersistence)
-	// HTTP
+	// ## Entrepreneur
+	businessService := entrepreneurApp.NewBusinessService(o.log, businessPersistence)
+	productService := entrepreneurApp.NewProductService(o.log, productPersistence, businessPersistence)
+	serviceService := entrepreneurApp.NewServiceService(o.log, servicePersistence, businessPersistence)
+	jobService := entrepreneurApp.NewJobService(o.log, jobPersistence, businessPersistence)
+
+	// # HTTP
+	// ## User
 	authHandler := http.NewAuthHandler(o.log, o.cache, authService, userService)
 	userHandler := http.NewUserHandler(o.log, userService)
+	// ## Entrepreneur
+	businessHandler := entrepreneurHttp.NewBusinessHandler(o.log, businessService)
+	productHandler := entrepreneurHttp.NewProductHandler(o.log, productService)
+	serviceHandler := entrepreneurHttp.NewServiceHandler(o.log, serviceService)
+	jobHandler := entrepreneurHttp.NewJobHandler(o.log, jobService)
 
-	// Middleware
+	// # Middleware
 	middleware := middleware.NewMiddleware(userPersistence, o.tokenManager)
 
 	return &Symphony{
 		Auth:       authHandler,
 		User:       userHandler,
+		Business:   businessHandler,
+		Product:    productHandler,
+		Service:    serviceHandler,
+		Job:        jobHandler,
 		Middleware: middleware,
 	}
 }

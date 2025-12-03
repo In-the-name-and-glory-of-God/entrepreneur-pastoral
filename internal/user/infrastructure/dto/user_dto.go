@@ -6,9 +6,11 @@ import (
 )
 
 type UserAsContext struct {
-	ID     uuid.UUID `json:"id"`
-	Email  string    `json:"email"`
-	RoleID int16     `json:"role_id"`
+	ID             uuid.UUID `json:"id"`
+	Email          string    `json:"email"`
+	RoleID         int16     `json:"role_id"`
+	IsCatholic     bool      `json:"is_catholic"`
+	IsEntrepreneur bool      `json:"is_entrepreneur"`
 }
 
 type UserGetResponse struct {
