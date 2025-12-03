@@ -74,7 +74,11 @@ func (s *JobService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *JobService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Job, error) {
 	job, err := s.jobRepo.GetByID(ctx, id)
-	if err != nil && err != domain.ErrJobNotFound {
+	if err != nil {
+		if err == domain.ErrJobNotFound {
+			return nil, err
+		}
+
 		s.logger.Errorw("failed to get job by ID", "id", id, "error", err)
 		return nil, response.ErrInternalServerError
 	}

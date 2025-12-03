@@ -67,7 +67,11 @@ func (s *ServiceService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *ServiceService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Service, error) {
 	service, err := s.serviceRepo.GetByID(ctx, id)
-	if err != nil && err != domain.ErrServiceNotFound {
+	if err != nil {
+		if err == domain.ErrServiceNotFound {
+			return nil, err
+		}
+
 		s.logger.Errorw("failed to get service by ID", "id", id, "error", err)
 		return nil, response.ErrInternalServerError
 	}

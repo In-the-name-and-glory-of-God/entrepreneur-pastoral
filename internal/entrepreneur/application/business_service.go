@@ -80,7 +80,11 @@ func (s *BusinessService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *BusinessService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Business, error) {
 	business, err := s.businessRepo.GetByID(ctx, id)
-	if err != nil && err != domain.ErrBusinessNotFound {
+	if err != nil {
+		if err == domain.ErrBusinessNotFound {
+			return nil, err
+		}
+
 		s.logger.Errorw("failed to get business by ID", "id", id, "error", err)
 		return nil, response.ErrInternalServerError
 	}
