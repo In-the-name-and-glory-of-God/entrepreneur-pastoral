@@ -147,6 +147,9 @@ func (r *BusinessPersistence) Count(ctx context.Context, filter *domain.Business
 
 	var count int
 	if err := r.db.GetContext(ctx, &count, query, args...); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, domain.ErrBusinessNotFound
+		}
 		return 0, fmt.Errorf("failed to execute count business query: %w", err)
 	}
 
