@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/google/uuid"
 )
 
@@ -17,7 +18,7 @@ type JobProfile struct {
 
 	// This field would be populated by a custom JOIN query,
 	// so it's ignored by default database operations.
-	FieldsOfWork []FieldOfWork `json:"fields_of_work,omitempty" db:"-"`
+	FieldsOfWork []adminDomain.FieldOfWork `json:"fields_of_work,omitempty" db:"-"`
 }
 
 // JobProfileFieldOfWork corresponds to the "job_profile_fields_of_work" junction table.

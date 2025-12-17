@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
@@ -207,7 +208,7 @@ func TestUserService_Create_Success(t *testing.T) {
 		PhoneNumber:      "5551234567",
 		OpenToWork:       true,
 		CVPath:           "/path/to/cv.pdf",
-		FieldsOfWork: []domain.FieldOfWork{
+		FieldsOfWork: []adminDomain.FieldOfWork{
 			{ID: 1, Name: "Engineering"},
 		},
 	}
@@ -334,7 +335,7 @@ func TestUserService_Update_Success(t *testing.T) {
 		NotifyBySms:      false,
 		OpenToWork:       true,
 		CVPath:           "/path/to/new_cv.pdf",
-		FieldsOfWork: []domain.FieldOfWork{
+		FieldsOfWork: []adminDomain.FieldOfWork{
 			{ID: 2, Name: "Marketing"},
 		},
 	}
