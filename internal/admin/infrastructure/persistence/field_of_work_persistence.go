@@ -61,6 +61,23 @@ func (r *FieldOfWorkPersistence) Update(ctx context.Context, fieldOfWork *domain
 	return nil
 }
 
+// Delete removes a field of work by its ID.
+func (r *FieldOfWorkPersistence) Delete(ctx context.Context, id int16) error {
+	query, args, err := r.psql.Delete("fields_of_work").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build delete field of work query: %w", err)
+	}
+
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to execute delete field of work query: %w", err)
+	}
+
+	return nil
+}
+
 // GetAll retrieves all fields of work, ordered by name.
 func (r *FieldOfWorkPersistence) GetAll(ctx context.Context) ([]*domain.FieldOfWork, error) {
 	var fields []*domain.FieldOfWork
