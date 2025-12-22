@@ -6,13 +6,13 @@ import (
 )
 
 type ChurchCreateRequest struct {
-	Name          string    `json:"name"`
-	Diocese       string    `json:"diocese"`
-	ParishNumber  string    `json:"parish_number"`
-	WebsiteURL    string    `json:"website_url"`
-	PhoneNumber   string    `json:"phone_number"`
-	AddressID     uuid.UUID `json:"address_id"`
-	IsArchdiocese bool      `json:"is_archdiocese"`
+	Name          string               `json:"name"`
+	Diocese       string               `json:"diocese"`
+	ParishNumber  string               `json:"parish_number"`
+	WebsiteURL    string               `json:"website_url"`
+	PhoneNumber   string               `json:"phone_number"`
+	Address       AddressCreateRequest `json:"address"`
+	IsArchdiocese bool                 `json:"is_archdiocese"`
 }
 
 type ChurchUpdateRequest struct {

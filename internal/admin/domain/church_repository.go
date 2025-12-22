@@ -8,6 +8,7 @@ import (
 )
 
 type ChurchRepository interface {
+	UnitOfWork(ctx context.Context, fn func(*sqlx.Tx) error) error
 	Create(tx *sqlx.Tx, church *Church) error
 	Update(tx *sqlx.Tx, church *Church) error
 	Delete(tx *sqlx.Tx, id uuid.UUID) error
