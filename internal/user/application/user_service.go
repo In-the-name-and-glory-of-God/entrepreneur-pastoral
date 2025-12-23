@@ -272,3 +272,23 @@ func (s *UserService) updateUserProperty(ctx context.Context, userID uuid.UUID, 
 
 	return nil
 }
+
+// SetRole sets the user's role.
+func (s *UserService) SetRole(ctx context.Context, req *dto.UserSetRoleRequest) error {
+	_, err := s.userRepo.GetByID(ctx, req.ID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return domain.ErrUserNotFound
+		}
+
+		s.logger.Errorw("failed to get user by ID", "userID", req.ID, "error", err)
+		return response.ErrInternalServerError
+	}
+
+	if err := s.userRepo.UpdateProperty(ctx, req.ID, domain.RoleID, req.RoleID); err != nil {
+		s.logger.Errorw("failed to set user role", "userID", req.ID, "roleID", req.RoleID, "error", err)
+		return response.ErrInternalServerError
+	}
+
+	return nil
+}

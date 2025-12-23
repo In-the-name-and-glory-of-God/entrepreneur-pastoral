@@ -63,6 +63,11 @@ func (m *MockBusinessRepository) Count(ctx context.Context, filter *domain.Busin
 	return args.Int(0), args.Error(1)
 }
 
+func (m *MockBusinessRepository) UpdateProperty(ctx context.Context, id uuid.UUID, property domain.BusinessProperty, value any) error {
+	args := m.Called(ctx, id, property, value)
+	return args.Error(0)
+}
+
 func TestBusinessService_Create(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)

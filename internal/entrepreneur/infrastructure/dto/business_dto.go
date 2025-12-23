@@ -38,3 +38,8 @@ type BusinessListResponse struct {
 	Limit      *int               `json:"limit"`
 	Offset     *int               `json:"offset"`
 }
+
+type BusinessUpdatePropertyRequest struct {
+	ID    uuid.UUID `json:"-"`
+	Value bool      `json:"value"`
+}

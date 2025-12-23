@@ -54,3 +54,8 @@ type UserUpdatePropertyRequest struct {
 	ID    uuid.UUID `json:"-"`
 	Value bool      `json:"value"`
 }
+
+type UserSetRoleRequest struct {
+	ID     uuid.UUID `json:"-"`
+	RoleID int16     `json:"role_id"`
+}
