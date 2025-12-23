@@ -11,11 +11,6 @@ var (
 	ErrForbidden      = errors.New("forbidden action")
 )
 
-// Industry errors
-var (
-	ErrIndustryNotFound = errors.New("industry not found")
-)
-
 // Business errors
 var (
 	ErrBusinessNotFound      = errors.New("business not found")

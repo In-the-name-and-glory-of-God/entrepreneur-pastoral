@@ -1,6 +1,7 @@
 package dto
 
 import (
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	"github.com/google/uuid"
 )
@@ -31,9 +32,9 @@ type UserUpdateRequest struct {
 	NotifyByEmail bool `json:"notify_by_email"`
 	NotifyBySms   bool `json:"notify_by_sms"`
 	// JobProfile
-	OpenToWork   bool                 `json:"open_to_work"`
-	CVPath       string               `json:"cv_path"`
-	FieldsOfWork []domain.FieldOfWork `json:"fields_of_work"`
+	OpenToWork   bool                      `json:"open_to_work"`
+	CVPath       string                    `json:"cv_path"`
+	FieldsOfWork []adminDomain.FieldOfWork `json:"fields_of_work"`
 }
 
 type UserUpdateResponse struct {
@@ -52,4 +53,9 @@ type UserListResponse struct {
 type UserUpdatePropertyRequest struct {
 	ID    uuid.UUID `json:"-"`
 	Value bool      `json:"value"`
+}
+
+type UserSetRoleRequest struct {
+	ID     uuid.UUID `json:"-"`
+	RoleID int16     `json:"role_id"`
 }

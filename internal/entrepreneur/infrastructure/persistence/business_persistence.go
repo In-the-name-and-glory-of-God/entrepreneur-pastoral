@@ -156,6 +156,23 @@ func (r *BusinessPersistence) Count(ctx context.Context, filter *domain.Business
 	return count, nil
 }
 
+func (r *BusinessPersistence) UpdateProperty(ctx context.Context, id uuid.UUID, property domain.BusinessProperty, value any) error {
+	query, args, err := r.psql.Update("business").
+		Set(string(property), value).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build update business property query: %w", err)
+	}
+
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to execute update business property query: %w", err)
+	}
+
+	return nil
+}
+
 func (r *BusinessPersistence) buildFilterQuery(baseQuery sq.SelectBuilder, filter *domain.BusinessFilters) sq.SelectBuilder {
 	if filter.UserID != nil {
 		baseQuery = baseQuery.Where(sq.Eq{"user_id": *filter.UserID})

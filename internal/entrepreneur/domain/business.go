@@ -7,6 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// BusinessProperty used for dynamic update
+type BusinessProperty string
+
+const (
+	BusinessIsActive BusinessProperty = "is_active"
+)
+
 // Business corresponds to the "business" table.
 type Business struct {
 	ID               uuid.UUID      `json:"id" db:"id"`

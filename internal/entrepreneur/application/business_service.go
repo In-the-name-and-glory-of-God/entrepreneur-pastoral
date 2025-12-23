@@ -133,3 +133,24 @@ func (s *BusinessService) List(ctx context.Context, req *dto.BusinessListRequest
 		Offset:     req.Offset,
 	}, nil
 }
+
+func (s *BusinessService) UpdateActiveStatus(ctx context.Context, req *dto.BusinessUpdatePropertyRequest) error {
+	business, err := s.businessRepo.GetByID(ctx, req.ID)
+	if err != nil {
+		if err == domain.ErrBusinessNotFound {
+			return domain.ErrBusinessNotFound
+		}
+
+		s.logger.Errorw("failed to get business by ID", "id", req.ID, "error", err)
+		return response.ErrInternalServerError
+	}
+
+	business.IsActive = req.Value
+
+	if err := s.businessRepo.UpdateProperty(ctx, req.ID, domain.BusinessIsActive, req.Value); err != nil {
+		s.logger.Errorw("failed to update business active status", "id", req.ID, "error", err)
+		return response.ErrInternalServerError
+	}
+
+	return nil
+}

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
@@ -61,6 +61,23 @@ func (r *FieldOfWorkPersistence) Update(ctx context.Context, fieldOfWork *domain
 	return nil
 }
 
+// Delete removes a field of work by its ID.
+func (r *FieldOfWorkPersistence) Delete(ctx context.Context, id int16) error {
+	query, args, err := r.psql.Delete("fields_of_work").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build delete field of work query: %w", err)
+	}
+
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to execute delete field of work query: %w", err)
+	}
+
+	return nil
+}
+
 // GetAll retrieves all fields of work, ordered by name.
 func (r *FieldOfWorkPersistence) GetAll(ctx context.Context) ([]*domain.FieldOfWork, error) {
 	var fields []*domain.FieldOfWork
@@ -74,7 +91,7 @@ func (r *FieldOfWorkPersistence) GetAll(ctx context.Context) ([]*domain.FieldOfW
 
 	if err := r.db.SelectContext(ctx, &fields, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get all fields of work query: %w", err)
@@ -97,7 +114,7 @@ func (r *FieldOfWorkPersistence) GetByID(ctx context.Context, id int16) (*domain
 
 	if err := r.db.GetContext(ctx, &field, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get field of work by id query: %w", err)
@@ -120,7 +137,7 @@ func (r *FieldOfWorkPersistence) GetByName(ctx context.Context, name string) (*d
 
 	if err := r.db.GetContext(ctx, &field, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get field of work by name query: %w", err)

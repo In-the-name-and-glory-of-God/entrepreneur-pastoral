@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/google/uuid"
 )
 
@@ -14,9 +14,9 @@ type UserRegisterRequest struct {
 	PhoneCountryCode string `json:"phone_country_code"`
 	PhoneNumber      string `json:"phone_number"`
 	// JobProfile
-	OpenToWork   bool                 `json:"open_to_work"`
-	CVPath       string               `json:"cv_path"`
-	FieldsOfWork []domain.FieldOfWork `json:"fields_of_work"`
+	OpenToWork   bool                      `json:"open_to_work"`
+	CVPath       string                    `json:"cv_path"`
+	FieldsOfWork []adminDomain.FieldOfWork `json:"fields_of_work"`
 }
 
 type UserLoginRequest struct {

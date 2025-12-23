@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -124,8 +125,8 @@ func (r *JobProfilePersistence) GetAllOpenToWork(ctx context.Context) ([]*domain
 }
 
 // getAllFieldsOfWorkByUserID retrieves all fields of work associated with a given user ID.
-func (r *JobProfilePersistence) getAllFieldsOfWorkByUserID(ctx context.Context, userID uuid.UUID) ([]domain.FieldOfWork, error) {
-	var fieldsOfWork []domain.FieldOfWork
+func (r *JobProfilePersistence) getAllFieldsOfWorkByUserID(ctx context.Context, userID uuid.UUID) ([]adminDomain.FieldOfWork, error) {
+	var fieldsOfWork []adminDomain.FieldOfWork
 	query, args, err := r.psql.
 		Select("fow.id", "fow.name").
 		From("job_profile_fields_of_work AS jpfow").
@@ -147,7 +148,7 @@ func (r *JobProfilePersistence) getAllFieldsOfWorkByUserID(ctx context.Context, 
 }
 
 // AddFieldOfWork inserts a new link between a user and a field of work.
-func (r *JobProfilePersistence) addFieldsOfWork(tx *sqlx.Tx, userID uuid.UUID, fieldsOfWork []domain.FieldOfWork) error {
+func (r *JobProfilePersistence) addFieldsOfWork(tx *sqlx.Tx, userID uuid.UUID, fieldsOfWork []adminDomain.FieldOfWork) error {
 	if len(fieldsOfWork) == 0 {
 		return nil
 	}
