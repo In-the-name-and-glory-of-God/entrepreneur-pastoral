@@ -228,9 +228,10 @@ func TestCache_GetStringAndDel(t *testing.T) {
 		assert.Equal(t, ErrCacheMiss, err)
 	})
 
-	t.Run("GetDel on non-existent key", func(t *testing.T) {
+	t.Run("GetDel on non-existent key returns ErrCacheMiss", func(t *testing.T) {
 		result, err := cache.GetStringAndDel(ctx, "nonexistent:key")
 		assert.Error(t, err)
+		assert.Equal(t, ErrCacheMiss, err)
 		assert.Empty(t, result)
 	})
 }

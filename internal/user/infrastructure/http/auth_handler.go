@@ -115,21 +115,34 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+// RequestPasswordReset handles the initial password reset request (sends email with reset link)
+func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req dto.UserResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.BadRequest(w, "Invalid request body", nil)
 		return
 	}
 
-	if req.Email != "" {
-		if err := auth.IsValidEmail(req.Email); err != nil {
-			response.BadRequest(w, "Valid email is required: "+err.Error(), nil)
-			return
-		}
-		// TODO: Send email with password reset link logic here
-		// TODO: Generate token and store in cache with expiration
-		response.OK(w, "Password reset link sent to email", nil)
+	if req.Email == "" {
+		response.BadRequest(w, "Email is required", nil)
+		return
+	}
+
+	if err := auth.IsValidEmail(req.Email); err != nil {
+		response.BadRequest(w, "Valid email is required: "+err.Error(), nil)
+		return
+	}
+
+	// TODO: Send email with password reset link logic here
+	// TODO: Generate token and store in cache with expiration
+	response.OK(w, "Password reset link sent to email", nil)
+}
+
+// ConfirmPasswordReset handles the actual password reset (with token validation)
+func (h *AuthHandler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req dto.UserResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "Invalid request body", nil)
 		return
 	}
 
@@ -140,14 +153,31 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Validate token from cache logic here
-
 	userID, err := uuid.Parse(id)
 	if err != nil {
 		response.BadRequest(w, "Invalid user ID", nil)
 		return
 	}
 	req.ID = userID
+
+	// Validate user status before allowing password reset
+	userResp, err := h.userService.GetByID(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			response.NotFound(w, "User not found")
+			return
+		}
+		h.logger.Errorf("Failed to get user for password reset", "error", err)
+		response.InternalServerError(w, "Failed to reset password")
+		return
+	}
+
+	if !userResp.User.IsActive {
+		response.Forbidden(w, "User account is inactive")
+		return
+	}
+
+	// TODO: Validate token from cache logic here
 
 	if err := auth.IsStrongPassword(req.NewPassword); err != nil {
 		response.BadRequest(w, "New password does not meet strength requirements: "+err.Error(), nil)

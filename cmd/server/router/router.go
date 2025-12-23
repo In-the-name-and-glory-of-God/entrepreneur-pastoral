@@ -62,8 +62,8 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Put("/register", srv.symphony.Auth.Register)
 			r.Post("/login", srv.symphony.Auth.Login)
-			r.Post("/password/reset", srv.symphony.Auth.ResetPassword)
-			r.Patch("/password/reset/{id}/{token}", srv.symphony.Auth.ResetPassword)
+			r.Post("/password/reset", srv.symphony.Auth.RequestPasswordReset)
+			r.Patch("/password/reset/{id}/{token}", srv.symphony.Auth.ConfirmPasswordReset)
 			r.Patch("/email/verify/{token}", srv.symphony.Auth.VerifyEmail)
 			r.Get("/refresh", srv.symphony.Auth.Refresh)
 		})

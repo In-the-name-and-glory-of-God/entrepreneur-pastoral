@@ -121,6 +121,9 @@ func (c Cache) GetString(ctx context.Context, key string) (string, error) {
 func (c Cache) GetStringAndDel(ctx context.Context, key string) (string, error) {
 	val, err := c.client.GetDel(ctx, key).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return "", ErrCacheMiss
+		}
 		return "", err
 	}
 
@@ -148,11 +151,7 @@ func (c Cache) Set(ctx context.Context, key string, val any, expire time.Duratio
 }
 
 func (c Cache) SetString(ctx context.Context, key string, value string, expiration time.Duration) error {
-	if err := c.client.Set(ctx, key, value, expiration).Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.client.Set(ctx, key, value, expiration).Err()
 }
 
 func (c Cache) Del(ctx context.Context, key string) error {
