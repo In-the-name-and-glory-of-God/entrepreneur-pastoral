@@ -34,7 +34,7 @@ func (s *AddressService) Create(ctx context.Context, req *dto.AddressCreateReque
 		Country:       req.Country,
 	}
 
-	if err := s.addressRepo.Create(nil, address); err != nil {
+	if err := s.addressRepo.CreateWithContext(ctx, address); err != nil {
 		s.logger.Errorw("failed to create address", "error", err)
 		return nil, response.ErrInternalServerError
 	}
@@ -60,7 +60,7 @@ func (s *AddressService) Update(ctx context.Context, req *dto.AddressUpdateReque
 	address.PostalCode = req.PostalCode
 	address.Country = req.Country
 
-	if err := s.addressRepo.Update(nil, address); err != nil {
+	if err := s.addressRepo.Update(ctx, address); err != nil {
 		s.logger.Errorw("failed to update address", "id", req.ID, "error", err)
 		return response.ErrInternalServerError
 	}
@@ -79,7 +79,7 @@ func (s *AddressService) Delete(ctx context.Context, id uuid.UUID) error {
 		return response.ErrInternalServerError
 	}
 
-	if err := s.addressRepo.Delete(nil, id); err != nil {
+	if err := s.addressRepo.Delete(ctx, id); err != nil {
 		s.logger.Errorw("failed to delete address", "id", id, "error", err)
 		return response.ErrInternalServerError
 	}

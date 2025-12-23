@@ -104,7 +104,7 @@ func (s *ChurchService) Update(ctx context.Context, req *dto.ChurchUpdateRequest
 	church.IsArchdiocese = req.IsArchdiocese
 	church.IsActive = req.IsActive
 
-	if err := s.churchRepo.Update(nil, church); err != nil {
+	if err := s.churchRepo.Update(ctx, church); err != nil {
 		s.logger.Errorw("failed to update church", "id", req.ID, "error", err)
 		return response.ErrInternalServerError
 	}
@@ -123,7 +123,7 @@ func (s *ChurchService) Delete(ctx context.Context, id uuid.UUID) error {
 		return response.ErrInternalServerError
 	}
 
-	if err := s.churchRepo.Delete(nil, id); err != nil {
+	if err := s.churchRepo.Delete(ctx, id); err != nil {
 		s.logger.Errorw("failed to delete church", "id", id, "error", err)
 		return response.ErrInternalServerError
 	}

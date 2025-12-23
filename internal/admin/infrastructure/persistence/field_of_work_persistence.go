@@ -91,7 +91,7 @@ func (r *FieldOfWorkPersistence) GetAll(ctx context.Context) ([]*domain.FieldOfW
 
 	if err := r.db.SelectContext(ctx, &fields, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get all fields of work query: %w", err)
@@ -114,7 +114,7 @@ func (r *FieldOfWorkPersistence) GetByID(ctx context.Context, id int16) (*domain
 
 	if err := r.db.GetContext(ctx, &field, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get field of work by id query: %w", err)
@@ -137,7 +137,7 @@ func (r *FieldOfWorkPersistence) GetByName(ctx context.Context, name string) (*d
 
 	if err := r.db.GetContext(ctx, &field, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get field of work by name query: %w", err)

@@ -9,7 +9,8 @@ import (
 
 type AddressRepository interface {
 	Create(tx *sqlx.Tx, address *Address) error
-	Update(tx *sqlx.Tx, address *Address) error
-	Delete(tx *sqlx.Tx, id uuid.UUID) error
+	CreateWithContext(ctx context.Context, address *Address) error
+	Update(ctx context.Context, address *Address) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Address, error)
 }

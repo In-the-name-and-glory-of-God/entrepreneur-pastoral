@@ -10,8 +10,8 @@ import (
 type ChurchRepository interface {
 	UnitOfWork(ctx context.Context, fn func(*sqlx.Tx) error) error
 	Create(tx *sqlx.Tx, church *Church) error
-	Update(tx *sqlx.Tx, church *Church) error
-	Delete(tx *sqlx.Tx, id uuid.UUID) error
+	Update(ctx context.Context, church *Church) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Church, error)
 	GetByName(ctx context.Context, name string) (*Church, error)
 	List(ctx context.Context, filter *ChurchFilters) ([]*Church, error)

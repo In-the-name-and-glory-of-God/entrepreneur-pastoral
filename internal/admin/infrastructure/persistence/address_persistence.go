@@ -44,8 +44,27 @@ func (r *AddressPersistence) Create(tx *sqlx.Tx, address *domain.Address) error 
 	return nil
 }
 
+// CreateWithContext inserts a new address without a transaction. The ID is generated and returned.
+func (r *AddressPersistence) CreateWithContext(ctx context.Context, address *domain.Address) error {
+	query, args, err := r.psql.Insert("address").
+		Columns("street_line_1", "street_line_2", "city", "state_province", "postal_code", "country").
+		Values(address.StreetLine1, address.StreetLine2, address.City, address.StateProvince, address.PostalCode, address.Country).
+		Suffix("RETURNING id").
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build create address query: %w", err)
+	}
+
+	if err := r.db.GetContext(ctx, &address.ID, query, args...); err != nil {
+		return fmt.Errorf("failed to execute create address query: %w", err)
+	}
+
+	return nil
+}
+
 // Update modifies an existing address.
-func (r *AddressPersistence) Update(tx *sqlx.Tx, address *domain.Address) error {
+func (r *AddressPersistence) Update(ctx context.Context, address *domain.Address) error {
 	query, args, err := r.psql.Update("address").
 		Set("street_line_1", address.StreetLine1).
 		Set("street_line_2", address.StreetLine2).
@@ -60,7 +79,7 @@ func (r *AddressPersistence) Update(tx *sqlx.Tx, address *domain.Address) error 
 		return fmt.Errorf("failed to build update address query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(context.Background(), query, args...); err != nil {
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to execute update address query: %w", err)
 	}
 
@@ -68,7 +87,7 @@ func (r *AddressPersistence) Update(tx *sqlx.Tx, address *domain.Address) error 
 }
 
 // Delete removes an address by its ID.
-func (r *AddressPersistence) Delete(tx *sqlx.Tx, id uuid.UUID) error {
+func (r *AddressPersistence) Delete(ctx context.Context, id uuid.UUID) error {
 	query, args, err := r.psql.Delete("address").
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -77,7 +96,7 @@ func (r *AddressPersistence) Delete(tx *sqlx.Tx, id uuid.UUID) error {
 		return fmt.Errorf("failed to build delete address query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(context.Background(), query, args...); err != nil {
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to execute delete address query: %w", err)
 	}
 
@@ -98,7 +117,7 @@ func (r *AddressPersistence) GetByID(ctx context.Context, id uuid.UUID) (*domain
 
 	if err := r.db.GetContext(ctx, &address, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrAddressNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get address by id query: %w", err)

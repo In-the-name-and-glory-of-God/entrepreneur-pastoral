@@ -74,7 +74,7 @@ func (r *ChurchPersistence) Create(tx *sqlx.Tx, church *domain.Church) error {
 }
 
 // Update modifies an existing church.
-func (r *ChurchPersistence) Update(tx *sqlx.Tx, church *domain.Church) error {
+func (r *ChurchPersistence) Update(ctx context.Context, church *domain.Church) error {
 	query, args, err := r.psql.Update("church").
 		Set("name", church.Name).
 		Set("diocese", church.Diocese).
@@ -91,7 +91,7 @@ func (r *ChurchPersistence) Update(tx *sqlx.Tx, church *domain.Church) error {
 		return fmt.Errorf("failed to build update church query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(context.Background(), query, args...); err != nil {
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to execute update church query: %w", err)
 	}
 
@@ -99,7 +99,7 @@ func (r *ChurchPersistence) Update(tx *sqlx.Tx, church *domain.Church) error {
 }
 
 // Delete removes a church by its ID.
-func (r *ChurchPersistence) Delete(tx *sqlx.Tx, id uuid.UUID) error {
+func (r *ChurchPersistence) Delete(ctx context.Context, id uuid.UUID) error {
 	query, args, err := r.psql.Delete("church").
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -108,7 +108,7 @@ func (r *ChurchPersistence) Delete(tx *sqlx.Tx, id uuid.UUID) error {
 		return fmt.Errorf("failed to build delete church query: %w", err)
 	}
 
-	if _, err := tx.ExecContext(context.Background(), query, args...); err != nil {
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to execute delete church query: %w", err)
 	}
 
@@ -129,7 +129,7 @@ func (r *ChurchPersistence) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 
 	if err := r.db.GetContext(ctx, &church, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrChurchNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get church by id query: %w", err)
@@ -152,7 +152,7 @@ func (r *ChurchPersistence) GetByName(ctx context.Context, name string) (*domain
 
 	if err := r.db.GetContext(ctx, &church, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrChurchNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute get church by name query: %w", err)
@@ -199,7 +199,7 @@ func (r *ChurchPersistence) List(ctx context.Context, filter *domain.ChurchFilte
 
 	if err := r.db.SelectContext(ctx, &churches, query, args...); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, domain.ErrChurchNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute list churches query: %w", err)
