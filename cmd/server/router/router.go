@@ -75,7 +75,7 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 			// r.Post("/list", srv.symphony.User.List)
 			// Flags handlers
 			// r.Route("/{id}/flag", func(r chi.Router) {
-			r.Patch("/active", srv.symphony.User.SetIsActive)
+			// 	r.Patch("/active", srv.symphony.User.SetIsActive)
 			// 	r.Patch("/catholic", srv.symphony.User.SetIsCatholic)
 			// 	r.Patch("/entrepreneur", srv.symphony.User.SetIsEntrepreneur)
 			// })
