@@ -25,6 +25,35 @@ func NewChurchPersistence(db *sqlx.DB) *ChurchPersistence {
 	}
 }
 
+// UnitOfWork is a helper function that executes a given function within a database transaction.
+func (r *ChurchPersistence) UnitOfWork(ctx context.Context, fn func(*sqlx.Tx) error) error {
+	var err error
+
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err = fn(tx); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // Create inserts a new church. The ID is generated and returned.
 func (r *ChurchPersistence) Create(tx *sqlx.Tx, church *domain.Church) error {
 	query, args, err := r.psql.Insert("church").

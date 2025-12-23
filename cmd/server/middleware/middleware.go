@@ -160,3 +160,29 @@ func (m *Middleware) UserIsCatholic(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func (m *Middleware) RequireRoles(allowedRoles ...int16) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userCtx := r.Context().Value(auth.UserContextKey)
+			if userCtx == nil {
+				response.Unauthorized(w, "User not authenticated")
+				return
+			}
+
+			user, ok := userCtx.(*dto.UserAsContext)
+			if !ok {
+				response.Unauthorized(w, "User not authenticated")
+				return
+			}
+
+			// Check if user's role is in allowedRoles
+			if slices.Contains(allowedRoles, user.RoleID) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			response.Forbidden(w, "User does not have permission to access this resource")
+		})
+	}
+}

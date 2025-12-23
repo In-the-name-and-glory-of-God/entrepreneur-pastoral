@@ -6,6 +6,7 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/cmd/server/orchestrator"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/constants"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -71,13 +72,13 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 			r.Use(srv.symphony.Middleware.Authenticate)
 			r.Get("/{id}", srv.symphony.User.GetByID)
 			r.Put("/{id}", srv.symphony.User.Update)
-			r.Post("/list", srv.symphony.User.List)
+			// r.Post("/list", srv.symphony.User.List)
 			// Flags handlers
-			r.Route("/{id}/flag", func(r chi.Router) {
-				r.Patch("/active", srv.symphony.User.SetIsActive)
-				r.Patch("/catholic", srv.symphony.User.SetIsCatholic)
-				r.Patch("/entrepreneur", srv.symphony.User.SetIsEntrepreneur)
-			})
+			// r.Route("/{id}/flag", func(r chi.Router) {
+			r.Patch("/active", srv.symphony.User.SetIsActive)
+			// 	r.Patch("/catholic", srv.symphony.User.SetIsCatholic)
+			// 	r.Patch("/entrepreneur", srv.symphony.User.SetIsEntrepreneur)
+			// })
 		})
 
 		r.Route("/entrepreneur", func(r chi.Router) {
@@ -141,6 +142,58 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 					r.Put("/{id}", srv.symphony.Job.Update)
 					r.Delete("/{id}", srv.symphony.Job.Delete)
 				})
+			})
+		})
+
+		// Admin routes - requires authentication and admin role
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(srv.symphony.Middleware.Authenticate)
+			r.Use(srv.symphony.Middleware.RequireRoles(constants.ROLE_ADMIN))
+
+			// User management
+			r.Route("/user", func(r chi.Router) {
+				r.Get("/{id}", srv.symphony.AdminUser.GetByID)
+				r.Post("/list", srv.symphony.AdminUser.List)
+				r.Route("/{id}/flag", func(r chi.Router) {
+					r.Patch("/active", srv.symphony.AdminUser.SetIsActive)
+					r.Patch("/catholic", srv.symphony.AdminUser.SetIsCatholic)
+					r.Patch("/entrepreneur", srv.symphony.AdminUser.SetIsEntrepreneur)
+				})
+				r.Patch("/{id}/role", srv.symphony.AdminUser.SetRole)
+			})
+
+			// Business management
+			r.Route("/business", func(r chi.Router) {
+				r.Get("/{id}", srv.symphony.AdminBusiness.GetByID)
+				r.Post("/list", srv.symphony.AdminBusiness.List)
+				r.Patch("/{id}/flag/active", srv.symphony.AdminBusiness.SetIsActive)
+			})
+
+			// Church management
+			r.Route("/church", func(r chi.Router) {
+				r.Post("/", srv.symphony.AdminChurch.Create)
+				r.Get("/{id}", srv.symphony.AdminChurch.GetByID)
+				r.Put("/{id}", srv.symphony.AdminChurch.Update)
+				r.Delete("/{id}", srv.symphony.AdminChurch.Delete)
+				r.Post("/list", srv.symphony.AdminChurch.List)
+			})
+
+			// Industry management
+			r.Route("/industry", func(r chi.Router) {
+				r.Post("/", srv.symphony.AdminIndustry.Create)
+				r.Get("/", srv.symphony.AdminIndustry.GetAll)
+				r.Get("/{id}", srv.symphony.AdminIndustry.GetByID)
+				r.Put("/{id}", srv.symphony.AdminIndustry.Update)
+				r.Delete("/{id}", srv.symphony.AdminIndustry.Delete)
+			})
+
+			// Field of work management
+			r.Route("/field-of-work", func(r chi.Router) {
+				r.Post("/", srv.symphony.AdminFieldOfWork.Create)
+				r.Get("/", srv.symphony.AdminFieldOfWork.GetAll)
+				r.Get("/{id}", srv.symphony.AdminFieldOfWork.GetByID)
+				r.Put("/{id}", srv.symphony.AdminFieldOfWork.Update)
+				r.Delete("/{id}", srv.symphony.AdminFieldOfWork.Delete)
 			})
 		})
 	})
