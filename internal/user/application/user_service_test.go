@@ -253,7 +253,7 @@ func TestUserService_Create_Success(t *testing.T) {
 		OpenToWork:       true,
 		CVPath:           "/path/to/cv.pdf",
 		FieldsOfWork: []adminDomain.FieldOfWork{
-			{ID: 1, Name: "Engineering"},
+			{ID: 1, Key: "engineering"},
 		},
 	}
 
@@ -387,7 +387,7 @@ func TestUserService_Update_Success(t *testing.T) {
 		OpenToWork:       true,
 		CVPath:           "/path/to/new_cv.pdf",
 		FieldsOfWork: []adminDomain.FieldOfWork{
-			{ID: 2, Name: "Marketing"},
+			{ID: 2, Key: "marketing"},
 		},
 	}
 

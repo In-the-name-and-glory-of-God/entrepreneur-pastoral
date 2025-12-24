@@ -39,6 +39,7 @@ type User struct {
 	DocumentID       string         `json:"document_id" db:"document_id"`
 	PhoneCountryCode sql.NullString `json:"phone_country_code" db:"phone_country_code"`
 	PhoneNumber      sql.NullString `json:"phone_number" db:"phone_number"`
+	Language         sql.NullString `json:"language" db:"language"`
 	IsActive         bool           `json:"is_active" db:"is_active"`
 	IsVerified       bool           `json:"is_verified" db:"is_verified"`
 	IsCatholic       bool           `json:"is_catholic" db:"is_catholic"`

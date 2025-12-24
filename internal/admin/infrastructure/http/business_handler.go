@@ -26,68 +26,71 @@ func NewBusinessHandler(logger *zap.SugaredLogger, businessService *application.
 }
 
 func (h *BusinessHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid business ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_business_id", nil)
 		return
 	}
 
-	business, err := h.businessService.GetByID(r.Context(), id)
+	business, err := h.businessService.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to get business by ID", "businessID", id, "error", err)
-		response.InternalServerError(w, "Failed to get business")
+		response.InternalServerErrorT(ctx, w, "error.failed_get_business")
 		return
 	}
 
-	response.OK(w, "Business retrieved successfully", business)
+	response.OKT(ctx, w, "success.business_retrieved", business)
 }
 
 func (h *BusinessHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.BusinessListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	list, err := h.businessService.List(r.Context(), &req)
+	list, err := h.businessService.List(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to list businesses", "error", err)
-		response.InternalServerError(w, "Failed to list businesses")
+		response.InternalServerErrorT(ctx, w, "error.failed_list_businesses")
 		return
 	}
 
-	response.OK(w, "Businesses listed successfully", list)
+	response.OKT(ctx, w, "success.businesses_listed", list)
 }
 
 func (h *BusinessHandler) SetIsActive(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid business ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_business_id", nil)
 		return
 	}
 
 	var req dto.BusinessUpdatePropertyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.businessService.UpdateActiveStatus(r.Context(), &req); err != nil {
+	if err := h.businessService.UpdateActiveStatus(ctx, &req); err != nil {
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to set is_active flag", "businessID", id, "error", err)
-		response.InternalServerError(w, "Failed to update is_active flag")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_business_status")
 		return
 	}
 
-	response.OK(w, "Business active status updated successfully", nil)
+	response.OKT(ctx, w, "success.business_status_updated", nil)
 }

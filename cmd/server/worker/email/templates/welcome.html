@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.Lang}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
+    <title>{{.Title}}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
     <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -13,28 +13,28 @@
                     <!-- Header -->
                     <tr>
                         <td style="padding: 40px 40px 20px 40px; text-align: center; background-color: #1a5f7a; border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">Entrepreneur Pastoral</h1>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">{{.Brand}}</h1>
                         </td>
                     </tr>
                     <!-- Content -->
                     <tr>
                         <td style="padding: 40px;">
-                            <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Welcome to Our Community!</h2>
+                            <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">{{.Title}}</h2>
                             <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                Hello <strong>{{.Name}}</strong>,
+                                {{.Greeting}}
                             </p>
                             <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                Welcome to Entrepreneur Pastoral! We're thrilled to have you join our community of Catholic entrepreneurs. Together, we can grow our businesses while staying true to our faith and values.
+                                {{.Message}}
                             </p>
                             <p style="margin: 0 0 30px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                Here's what you can do with your new account:
+                                {{.FeaturesIntro}}
                             </p>
                             <!-- Features List -->
                             <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
                                 <tr>
                                     <td style="padding: 15px 20px; background-color: #f8f9fa; border-radius: 6px; margin-bottom: 10px;">
                                         <p style="margin: 0; color: #333333; font-size: 15px;">
-                                            <strong style="color: #1a5f7a;">✓</strong> Create and showcase your business profile
+                                            <strong style="color: #1a5f7a;">✓</strong> {{.Feature1}}
                                         </p>
                                     </td>
                                 </tr>
@@ -42,7 +42,7 @@
                                 <tr>
                                     <td style="padding: 15px 20px; background-color: #f8f9fa; border-radius: 6px;">
                                         <p style="margin: 0; color: #333333; font-size: 15px;">
-                                            <strong style="color: #1a5f7a;">✓</strong> List your products and services
+                                            <strong style="color: #1a5f7a;">✓</strong> {{.Feature2}}
                                         </p>
                                     </td>
                                 </tr>
@@ -50,7 +50,7 @@
                                 <tr>
                                     <td style="padding: 15px 20px; background-color: #f8f9fa; border-radius: 6px;">
                                         <p style="margin: 0; color: #333333; font-size: 15px;">
-                                            <strong style="color: #1a5f7a;">✓</strong> Post job opportunities and find talent
+                                            <strong style="color: #1a5f7a;">✓</strong> {{.Feature3}}
                                         </p>
                                     </td>
                                 </tr>
@@ -58,19 +58,19 @@
                                 <tr>
                                     <td style="padding: 15px 20px; background-color: #f8f9fa; border-radius: 6px;">
                                         <p style="margin: 0; color: #333333; font-size: 15px;">
-                                            <strong style="color: #1a5f7a;">✓</strong> Connect with fellow Catholic entrepreneurs
+                                            <strong style="color: #1a5f7a;">✓</strong> {{.Feature4}}
                                         </p>
                                     </td>
                                 </tr>
                             </table>
                             <p style="margin: 0 0 30px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                We're here to support you on your entrepreneurial journey. If you have any questions, don't hesitate to reach out.
+                                {{.Closing}}
                             </p>
                             <p style="margin: 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                God bless your endeavors!
+                                {{.Blessing}}
                             </p>
                             <p style="margin: 20px 0 0 0; color: #333333; font-size: 16px; font-weight: 600;">
-                                — The Entrepreneur Pastoral Team
+                                {{.Signature}}
                             </p>
                         </td>
                     </tr>
@@ -78,7 +78,7 @@
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; border-top: 1px solid #eeeeee;">
                             <p style="margin: 0; color: #999999; font-size: 13px; text-align: center;">
-                                © 2024 Entrepreneur Pastoral. All rights reserved.
+                                {{.Copyright}}
                             </p>
                         </td>
                     </tr>

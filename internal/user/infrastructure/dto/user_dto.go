@@ -10,6 +10,7 @@ type UserAsContext struct {
 	ID             uuid.UUID `json:"id"`
 	Email          string    `json:"email"`
 	RoleID         int16     `json:"role_id"`
+	Language       string    `json:"language"`
 	IsCatholic     bool      `json:"is_catholic"`
 	IsEntrepreneur bool      `json:"is_entrepreneur"`
 }

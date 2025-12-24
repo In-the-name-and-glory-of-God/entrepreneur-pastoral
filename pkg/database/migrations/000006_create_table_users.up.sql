@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS users (
     phone_country_code VARCHAR(10),
     phone_number VARCHAR(20),
 
+    -- Language preference (e.g., "en-US", "pt-BR"), null means use Accept-Language header
+    language VARCHAR(10),
+
     -- Flags
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     is_verified BOOLEAN NOT NULL DEFAULT FALSE,

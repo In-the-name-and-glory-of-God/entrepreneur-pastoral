@@ -52,8 +52,8 @@ func (m *MockFieldOfWorkRepository) GetByID(ctx context.Context, id int16) (*dom
 	return args.Get(0).(*domain.FieldOfWork), args.Error(1)
 }
 
-func (m *MockFieldOfWorkRepository) GetByName(ctx context.Context, name string) (*domain.FieldOfWork, error) {
-	args := m.Called(ctx, name)
+func (m *MockFieldOfWorkRepository) GetByKey(ctx context.Context, key string) (*domain.FieldOfWork, error) {
+	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -67,26 +67,26 @@ func TestFieldOfWorkService_Create(t *testing.T) {
 	ctx := context.Background()
 
 	req := &dto.FieldOfWorkCreateRequest{
-		Name: "Engineering",
+		Key: "engineering",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrFieldOfWorkNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrFieldOfWorkNotFound)
 		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.FieldOfWork")).Return(nil)
 
 		result, err := service.Create(ctx, req)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, req.Name, result.Name)
+		assert.Equal(t, req.Key, result.Key)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("AlreadyExists", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		existingFieldOfWork := &domain.FieldOfWork{ID: 1, Name: req.Name}
-		mockRepo.On("GetByName", ctx, req.Name).Return(existingFieldOfWork, nil)
+		existingFieldOfWork := &domain.FieldOfWork{ID: 1, Key: req.Key}
+		mockRepo.On("GetByKey", ctx, req.Key).Return(existingFieldOfWork, nil)
 
 		result, err := service.Create(ctx, req)
 
@@ -98,7 +98,7 @@ func TestFieldOfWorkService_Create(t *testing.T) {
 
 	t.Run("CreateFailure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrFieldOfWorkNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrFieldOfWorkNotFound)
 		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.FieldOfWork")).Return(errors.New("db error"))
 
 		result, err := service.Create(ctx, req)
@@ -109,9 +109,9 @@ func TestFieldOfWorkService_Create(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("GetByNameInternalError", func(t *testing.T) {
+	t.Run("GetByKeyInternalError", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, errors.New("db error"))
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, errors.New("db error"))
 
 		result, err := service.Create(ctx, req)
 
@@ -129,19 +129,19 @@ func TestFieldOfWorkService_Update(t *testing.T) {
 	ctx := context.Background()
 
 	req := &dto.FieldOfWorkUpdateRequest{
-		ID:   1,
-		Name: "Updated Engineering",
+		ID:  1,
+		Key: "updated_engineering",
 	}
 
 	existingFieldOfWork := &domain.FieldOfWork{
-		ID:   1,
-		Name: "Engineering",
+		ID:  1,
+		Key: "engineering",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingFieldOfWork, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrFieldOfWorkNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrFieldOfWorkNotFound)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.FieldOfWork")).Return(nil)
 
 		err := service.Update(ctx, req)
@@ -161,11 +161,11 @@ func TestFieldOfWorkService_Update(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("NameAlreadyExists", func(t *testing.T) {
+	t.Run("KeyAlreadyExists", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		differentFieldOfWork := &domain.FieldOfWork{ID: 2, Name: req.Name}
+		differentFieldOfWork := &domain.FieldOfWork{ID: 2, Key: req.Key}
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingFieldOfWork, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(differentFieldOfWork, nil)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(differentFieldOfWork, nil)
 
 		err := service.Update(ctx, req)
 
@@ -174,11 +174,11 @@ func TestFieldOfWorkService_Update(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("UpdateSameNameSameID", func(t *testing.T) {
+	t.Run("UpdateSameKeySameID", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		sameFieldOfWork := &domain.FieldOfWork{ID: req.ID, Name: req.Name}
+		sameFieldOfWork := &domain.FieldOfWork{ID: req.ID, Key: req.Key}
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingFieldOfWork, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(sameFieldOfWork, nil)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(sameFieldOfWork, nil)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.FieldOfWork")).Return(nil)
 
 		err := service.Update(ctx, req)
@@ -190,7 +190,7 @@ func TestFieldOfWorkService_Update(t *testing.T) {
 	t.Run("UpdateFailure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingFieldOfWork, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrFieldOfWorkNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrFieldOfWorkNotFound)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.FieldOfWork")).Return(errors.New("db error"))
 
 		err := service.Update(ctx, req)
@@ -219,7 +219,7 @@ func TestFieldOfWorkService_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	id := int16(1)
-	existingFieldOfWork := &domain.FieldOfWork{ID: id, Name: "Engineering"}
+	existingFieldOfWork := &domain.FieldOfWork{ID: id, Key: "engineering"}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
@@ -274,7 +274,7 @@ func TestFieldOfWorkService_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	id := int16(1)
-	expectedFieldOfWork := &domain.FieldOfWork{ID: id, Name: "Engineering"}
+	expectedFieldOfWork := &domain.FieldOfWork{ID: id, Key: "engineering"}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
@@ -319,8 +319,8 @@ func TestFieldOfWorkService_GetAll(t *testing.T) {
 	ctx := context.Background()
 
 	expectedFieldsOfWork := []*domain.FieldOfWork{
-		{ID: 1, Name: "Engineering"},
-		{ID: 2, Name: "Design"},
+		{ID: 1, Key: "engineering"},
+		{ID: 2, Key: "design"},
 	}
 
 	t.Run("Success", func(t *testing.T) {

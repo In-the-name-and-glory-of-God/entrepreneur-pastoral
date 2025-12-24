@@ -52,8 +52,8 @@ func (m *MockIndustryRepository) GetByID(ctx context.Context, id int16) (*domain
 	return args.Get(0).(*domain.Industry), args.Error(1)
 }
 
-func (m *MockIndustryRepository) GetByName(ctx context.Context, name string) (*domain.Industry, error) {
-	args := m.Called(ctx, name)
+func (m *MockIndustryRepository) GetByKey(ctx context.Context, key string) (*domain.Industry, error) {
+	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -67,26 +67,26 @@ func TestIndustryService_Create(t *testing.T) {
 	ctx := context.Background()
 
 	req := &dto.IndustryCreateRequest{
-		Name: "Technology",
+		Key: "technology",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrIndustryNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrIndustryNotFound)
 		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.Industry")).Return(nil)
 
 		result, err := service.Create(ctx, req)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, req.Name, result.Name)
+		assert.Equal(t, req.Key, result.Key)
 		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("AlreadyExists", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		existingIndustry := &domain.Industry{ID: 1, Name: req.Name}
-		mockRepo.On("GetByName", ctx, req.Name).Return(existingIndustry, nil)
+		existingIndustry := &domain.Industry{ID: 1, Key: req.Key}
+		mockRepo.On("GetByKey", ctx, req.Key).Return(existingIndustry, nil)
 
 		result, err := service.Create(ctx, req)
 
@@ -98,7 +98,7 @@ func TestIndustryService_Create(t *testing.T) {
 
 	t.Run("CreateFailure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrIndustryNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrIndustryNotFound)
 		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.Industry")).Return(errors.New("db error"))
 
 		result, err := service.Create(ctx, req)
@@ -117,19 +117,19 @@ func TestIndustryService_Update(t *testing.T) {
 	ctx := context.Background()
 
 	req := &dto.IndustryUpdateRequest{
-		ID:   1,
-		Name: "Updated Technology",
+		ID:  1,
+		Key: "updated_technology",
 	}
 
 	existingIndustry := &domain.Industry{
-		ID:   1,
-		Name: "Technology",
+		ID:  1,
+		Key: "technology",
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingIndustry, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrIndustryNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrIndustryNotFound)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.Industry")).Return(nil)
 
 		err := service.Update(ctx, req)
@@ -149,11 +149,11 @@ func TestIndustryService_Update(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("NameAlreadyExists", func(t *testing.T) {
+	t.Run("KeyAlreadyExists", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		differentIndustry := &domain.Industry{ID: 2, Name: req.Name}
+		differentIndustry := &domain.Industry{ID: 2, Key: req.Key}
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingIndustry, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(differentIndustry, nil)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(differentIndustry, nil)
 
 		err := service.Update(ctx, req)
 
@@ -162,11 +162,11 @@ func TestIndustryService_Update(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("UpdateSameNameSameID", func(t *testing.T) {
+	t.Run("UpdateSameKeySameID", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
-		sameIndustry := &domain.Industry{ID: req.ID, Name: req.Name}
+		sameIndustry := &domain.Industry{ID: req.ID, Key: req.Key}
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingIndustry, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(sameIndustry, nil)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(sameIndustry, nil)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.Industry")).Return(nil)
 
 		err := service.Update(ctx, req)
@@ -178,7 +178,7 @@ func TestIndustryService_Update(t *testing.T) {
 	t.Run("UpdateFailure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, req.ID).Return(existingIndustry, nil)
-		mockRepo.On("GetByName", ctx, req.Name).Return(nil, domain.ErrIndustryNotFound)
+		mockRepo.On("GetByKey", ctx, req.Key).Return(nil, domain.ErrIndustryNotFound)
 		mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.Industry")).Return(errors.New("db error"))
 
 		err := service.Update(ctx, req)
@@ -196,7 +196,7 @@ func TestIndustryService_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	id := int16(1)
-	existingIndustry := &domain.Industry{ID: id, Name: "Technology"}
+	existingIndustry := &domain.Industry{ID: id, Key: "technology"}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
@@ -240,7 +240,7 @@ func TestIndustryService_GetByID(t *testing.T) {
 	ctx := context.Background()
 
 	id := int16(1)
-	expectedIndustry := &domain.Industry{ID: id, Name: "Technology"}
+	expectedIndustry := &domain.Industry{ID: id, Key: "technology"}
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
@@ -273,8 +273,8 @@ func TestIndustryService_GetAll(t *testing.T) {
 	ctx := context.Background()
 
 	expectedIndustries := []*domain.Industry{
-		{ID: 1, Name: "Technology"},
-		{ID: 2, Name: "Healthcare"},
+		{ID: 1, Key: "technology"},
+		{ID: 2, Key: "healthcare"},
 	}
 
 	t.Run("Success", func(t *testing.T) {

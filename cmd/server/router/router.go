@@ -34,6 +34,8 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	// Language middleware - parses Accept-Language header and sets language in context
+	r.Use(srv.symphony.Middleware.Language)
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.

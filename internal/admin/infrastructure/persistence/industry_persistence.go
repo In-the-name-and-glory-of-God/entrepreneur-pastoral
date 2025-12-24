@@ -24,8 +24,8 @@ func NewIndustryPersistence(db *sqlx.DB) *IndustryPersistence {
 
 func (r *IndustryPersistence) Create(ctx context.Context, industry *domain.Industry) error {
 	query, args, err := r.psql.Insert("industries").
-		Columns("name").
-		Values(industry.Name).
+		Columns("key").
+		Values(industry.Key).
 		Suffix("RETURNING id").
 		ToSql()
 
@@ -42,7 +42,7 @@ func (r *IndustryPersistence) Create(ctx context.Context, industry *domain.Indus
 
 func (r *IndustryPersistence) Update(ctx context.Context, industry *domain.Industry) error {
 	query, args, err := r.psql.Update("industries").
-		Set("name", industry.Name).
+		Set("key", industry.Key).
 		Where(sq.Eq{"id": industry.ID}).
 		ToSql()
 
@@ -75,7 +75,7 @@ func (r *IndustryPersistence) Delete(ctx context.Context, id int16) error {
 
 func (r *IndustryPersistence) GetAll(ctx context.Context) ([]*domain.Industry, error) {
 	var industries []*domain.Industry
-	query, args, err := r.psql.Select("*").From("industries").OrderBy("name ASC").ToSql()
+	query, args, err := r.psql.Select("*").From("industries").OrderBy("key ASC").ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build get all industries query: %w", err)
 	}
@@ -107,18 +107,18 @@ func (r *IndustryPersistence) GetByID(ctx context.Context, id int16) (*domain.In
 	return &industry, nil
 }
 
-func (r *IndustryPersistence) GetByName(ctx context.Context, name string) (*domain.Industry, error) {
+func (r *IndustryPersistence) GetByKey(ctx context.Context, key string) (*domain.Industry, error) {
 	var industry domain.Industry
-	query, args, err := r.psql.Select("*").From("industries").Where(sq.Eq{"name": name}).Limit(1).ToSql()
+	query, args, err := r.psql.Select("*").From("industries").Where(sq.Eq{"key": key}).Limit(1).ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build get industry by name query: %w", err)
+		return nil, fmt.Errorf("failed to build get industry by key query: %w", err)
 	}
 
 	if err := r.db.GetContext(ctx, &industry, query, args...); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrIndustryNotFound
 		}
-		return nil, fmt.Errorf("failed to execute get industry by name query: %w", err)
+		return nil, fmt.Errorf("failed to execute get industry by key query: %w", err)
 	}
 
 	return &industry, nil

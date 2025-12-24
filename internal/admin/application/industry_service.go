@@ -23,16 +23,16 @@ func NewIndustryService(logger *zap.SugaredLogger, industryRepo domain.IndustryR
 }
 
 func (s *IndustryService) Create(ctx context.Context, req *dto.IndustryCreateRequest) (*domain.Industry, error) {
-	// Check if industry with same name already exists
-	if _, err := s.industryRepo.GetByName(ctx, req.Name); err == nil {
+	// Check if industry with same key already exists
+	if _, err := s.industryRepo.GetByKey(ctx, req.Key); err == nil {
 		return nil, domain.ErrIndustryAlreadyExists
 	} else if !errors.Is(err, domain.ErrIndustryNotFound) {
-		s.logger.Errorw("failed to check existing industry", "name", req.Name, "error", err)
+		s.logger.Errorw("failed to check existing industry", "key", req.Key, "error", err)
 		return nil, response.ErrInternalServerError
 	}
 
 	industry := &domain.Industry{
-		Name: req.Name,
+		Key: req.Key,
 	}
 
 	if err := s.industryRepo.Create(ctx, industry); err != nil {
@@ -54,14 +54,14 @@ func (s *IndustryService) Update(ctx context.Context, req *dto.IndustryUpdateReq
 		return response.ErrInternalServerError
 	}
 
-	// Check if updating to a name that already exists (and belongs to a different industry)
-	if existingIndustry, err := s.industryRepo.GetByName(ctx, req.Name); err == nil && existingIndustry.ID != req.ID {
+	// Check if updating to a key that already exists (and belongs to a different industry)
+	if existingIndustry, err := s.industryRepo.GetByKey(ctx, req.Key); err == nil && existingIndustry.ID != req.ID {
 		return domain.ErrIndustryAlreadyExists
 	}
 
 	industry := &domain.Industry{
-		ID:   req.ID,
-		Name: req.Name,
+		ID:  req.ID,
+		Key: req.Key,
 	}
 
 	if err := s.industryRepo.Update(ctx, industry); err != nil {

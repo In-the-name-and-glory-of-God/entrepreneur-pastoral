@@ -8,5 +8,5 @@ type FieldOfWorkRepository interface {
 	Delete(ctx context.Context, id int16) error
 	GetAll(ctx context.Context) ([]*FieldOfWork, error)
 	GetByID(ctx context.Context, id int16) (*FieldOfWork, error)
-	GetByName(ctx context.Context, name string) (*FieldOfWork, error)
+	GetByKey(ctx context.Context, key string) (*FieldOfWork, error)
 }

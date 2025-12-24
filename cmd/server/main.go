@@ -14,6 +14,7 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/database"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/i18n"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/logger"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"go.uber.org/zap"
@@ -33,6 +34,12 @@ func failOnError(err error, msg string) {
 func main() {
 	cfg = config.Load()
 	log = logger.New(cfg.Application)
+
+	// Initialize i18n translations
+	if err := i18n.Init(); err != nil {
+		log.Fatal("failed to initialize i18n", err)
+	}
+	log.Info("i18n translations loaded")
 
 	db, err := database.NewPostgresConn(cfg.Database)
 	failOnError(err, "failed to connect to database")

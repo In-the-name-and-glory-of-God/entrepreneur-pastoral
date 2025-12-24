@@ -13,6 +13,7 @@ import (
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/constants"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/i18n"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"go.uber.org/zap"
 )
@@ -132,17 +133,32 @@ func (s *AuthService) SendVerificationEmail(ctx context.Context, user *domain.Us
 		return err
 	}
 
+	// Determine user's language preference
+	lang := i18n.GetLanguage(ctx)
+	if user.Language.Valid && user.Language.String != "" {
+		lang = i18n.Language(user.Language.String)
+	}
+
 	// Build verification link
 	verificationLink := fmt.Sprintf("%s:%d/api/v1/auth/verify-email/%s", s.config.API.Host, s.config.API.Port, token)
 
-	// Create notification payload
+	// Create notification payload with translated strings
 	payload := NotificationPayload{
 		From:         s.config.SMTP.From,
 		To:           []string{user.Email},
-		Subject:      "Verify Your Account",
+		Subject:      i18n.Translate(lang, "email.verify_account.subject"),
 		TemplateName: constants.EMAIL_TEMPLATE_VERIFY_ACCOUNT,
 		Data: map[string]string{
-			"Name":             user.FirstName,
+			"Lang":             string(lang),
+			"Brand":            i18n.Translate(lang, "email.common.brand"),
+			"Title":            i18n.Translate(lang, "email.verify_account.title"),
+			"Greeting":         i18n.TranslateWithParams(lang, "email.verify_account.greeting", map[string]string{"name": user.FirstName}),
+			"Message":          i18n.Translate(lang, "email.verify_account.message"),
+			"Button":           i18n.Translate(lang, "email.verify_account.button"),
+			"LinkFallback":     i18n.Translate(lang, "email.verify_account.link_fallback"),
+			"Expiry":           i18n.Translate(lang, "email.verify_account.expiry"),
+			"Footer":           i18n.Translate(lang, "email.verify_account.footer"),
+			"Copyright":        i18n.Translate(lang, "email.common.copyright"),
 			"VerificationLink": verificationLink,
 		},
 	}
@@ -170,18 +186,35 @@ func (s *AuthService) SendPasswordResetEmail(ctx context.Context, user *domain.U
 		return err
 	}
 
+	// Determine user's language preference
+	lang := i18n.GetLanguage(ctx)
+	if user.Language.Valid && user.Language.String != "" {
+		lang = i18n.Language(user.Language.String)
+	}
+
 	// Build reset link
 	resetLink := fmt.Sprintf("%s:%d/api/v1/auth/reset-password/%s/%s", s.config.API.Host, s.config.API.Port, user.ID.String(), token)
 
-	// Create notification payload
+	// Create notification payload with translated strings
 	payload := NotificationPayload{
 		From:         s.config.SMTP.From,
 		To:           []string{user.Email},
-		Subject:      "Password Reset Request",
+		Subject:      i18n.Translate(lang, "email.password_reset.subject"),
 		TemplateName: constants.EMAIL_TEMPLATE_PASSWORD_RESET,
 		Data: map[string]string{
-			"Name":      user.FirstName,
-			"ResetLink": resetLink,
+			"Lang":            string(lang),
+			"Brand":           i18n.Translate(lang, "email.common.brand"),
+			"Title":           i18n.Translate(lang, "email.password_reset.title"),
+			"Greeting":        i18n.TranslateWithParams(lang, "email.password_reset.greeting", map[string]string{"name": user.FirstName}),
+			"Message":         i18n.Translate(lang, "email.password_reset.message"),
+			"Button":          i18n.Translate(lang, "email.password_reset.button"),
+			"LinkFallback":    i18n.Translate(lang, "email.password_reset.link_fallback"),
+			"Expiry":          i18n.Translate(lang, "email.password_reset.expiry"),
+			"SecurityTip":     i18n.Translate(lang, "email.password_reset.security_tip"),
+			"SecurityMessage": i18n.Translate(lang, "email.password_reset.security_message"),
+			"Footer":          i18n.Translate(lang, "email.password_reset.footer"),
+			"Copyright":       i18n.Translate(lang, "email.common.copyright"),
+			"ResetLink":       resetLink,
 		},
 	}
 
