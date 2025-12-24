@@ -3,6 +3,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id SMALLINT NOT NULL,
+    address_id UUID NOT NULL,
+    church_id UUID NOT NULL,
 
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -11,6 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
     document_id VARCHAR(100) NOT NULL UNIQUE,
     phone_country_code VARCHAR(10),
     phone_number VARCHAR(20),
+
+    -- Language preference (e.g., "en-US", "pt-BR"), null means use Accept-Language header
+    language VARCHAR(10),
 
     -- Flags
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -27,8 +32,22 @@ CREATE TABLE IF NOT EXISTS users (
         FOREIGN KEY(role_id)
         REFERENCES roles(id)
         ON DELETE RESTRICT -- Prevents deleting a role if users are still assigned to it
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_address
+        FOREIGN KEY (address_id)
+        REFERENCES address(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_church
+        FOREIGN KEY (church_id)
+        REFERENCES church(id)
+        ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
+
+-- Create indexes for better query performance on foreign keys
+CREATE INDEX idx_users_address_id ON users(address_id);
+CREATE INDEX idx_users_church_id ON users(church_id);
 
 -- Apply the trigger to 'updated_at' column
 CREATE TRIGGER set_timestamp_users

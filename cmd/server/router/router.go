@@ -34,6 +34,8 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	// Language middleware - parses Accept-Language header and sets language in context
+	r.Use(srv.symphony.Middleware.Language)
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
@@ -62,8 +64,8 @@ func (srv *ServerRouter) Mount(client *redis.Client) http.Handler {
 		r.Route("/auth", func(r chi.Router) {
 			r.Put("/register", srv.symphony.Auth.Register)
 			r.Post("/login", srv.symphony.Auth.Login)
-			r.Post("/password/reset", srv.symphony.Auth.ResetPassword)
-			r.Patch("/password/reset/{id}/{token}", srv.symphony.Auth.ResetPassword)
+			r.Post("/password/reset", srv.symphony.Auth.RequestPasswordReset)
+			r.Patch("/password/reset/{id}/{token}", srv.symphony.Auth.ConfirmPasswordReset)
 			r.Patch("/email/verify/{token}", srv.symphony.Auth.VerifyEmail)
 			r.Get("/refresh", srv.symphony.Auth.Refresh)
 		})

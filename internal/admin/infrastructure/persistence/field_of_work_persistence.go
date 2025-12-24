@@ -27,8 +27,8 @@ func NewFieldOfWorkPersistence(db *sqlx.DB) *FieldOfWorkPersistence {
 // Create inserts a new field of work. The ID is SERIAL, so it's returned and set on the struct.
 func (r *FieldOfWorkPersistence) Create(ctx context.Context, fieldOfWork *domain.FieldOfWork) error {
 	query, args, err := r.psql.Insert("fields_of_work").
-		Columns("name").
-		Values(fieldOfWork.Name).
+		Columns("key").
+		Values(fieldOfWork.Key).
 		Suffix("RETURNING id").
 		ToSql()
 
@@ -46,7 +46,7 @@ func (r *FieldOfWorkPersistence) Create(ctx context.Context, fieldOfWork *domain
 // Update modifies an existing field of work.
 func (r *FieldOfWorkPersistence) Update(ctx context.Context, fieldOfWork *domain.FieldOfWork) error {
 	query, args, err := r.psql.Update("fields_of_work").
-		Set("name", fieldOfWork.Name).
+		Set("key", fieldOfWork.Key).
 		Where(sq.Eq{"id": fieldOfWork.ID}).
 		ToSql()
 
@@ -78,11 +78,11 @@ func (r *FieldOfWorkPersistence) Delete(ctx context.Context, id int16) error {
 	return nil
 }
 
-// GetAll retrieves all fields of work, ordered by name.
+// GetAll retrieves all fields of work, ordered by key.
 func (r *FieldOfWorkPersistence) GetAll(ctx context.Context) ([]*domain.FieldOfWork, error) {
 	var fields []*domain.FieldOfWork
 	query, args, err := r.psql.Select("*").From("fields_of_work").
-		OrderBy("name ASC").
+		OrderBy("key ASC").
 		ToSql()
 
 	if err != nil {
@@ -123,16 +123,16 @@ func (r *FieldOfWorkPersistence) GetByID(ctx context.Context, id int16) (*domain
 	return &field, nil
 }
 
-// GetByName retrieves a single field of work by its name.
-func (r *FieldOfWorkPersistence) GetByName(ctx context.Context, name string) (*domain.FieldOfWork, error) {
+// GetByKey retrieves a single field of work by its key.
+func (r *FieldOfWorkPersistence) GetByKey(ctx context.Context, key string) (*domain.FieldOfWork, error) {
 	var field domain.FieldOfWork
 	query, args, err := r.psql.Select("*").From("fields_of_work").
-		Where(sq.Like{"name": fmt.Sprintf("%%%s%%", name)}).
+		Where(sq.Eq{"key": key}).
 		Limit(1).
 		ToSql()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to build get field of work by name query: %w", err)
+		return nil, fmt.Errorf("failed to build get field of work by key query: %w", err)
 	}
 
 	if err := r.db.GetContext(ctx, &field, query, args...); err != nil {
@@ -140,7 +140,7 @@ func (r *FieldOfWorkPersistence) GetByName(ctx context.Context, name string) (*d
 			return nil, domain.ErrFieldOfWorkNotFound
 		}
 
-		return nil, fmt.Errorf("failed to execute get field of work by name query: %w", err)
+		return nil, fmt.Errorf("failed to execute get field of work by key query: %w", err)
 	}
 
 	return &field, nil

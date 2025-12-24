@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS business (
     CONSTRAINT fk_user
         FOREIGN KEY(user_id)
         REFERENCES users(id)
-        ON DELETE RESTRICT -- Prevents deleting a user if businesses are still assigned to it
+        ON DELETE CASCADE
         ON UPDATE CASCADE,
     CONSTRAINT fk_industry
         FOREIGN KEY(industry_id)

@@ -24,6 +24,6 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT fk_business
         FOREIGN KEY(business_id)
         REFERENCES business(id)
-        ON DELETE RESTRICT -- Prevents deleting a business if products are still assigned to it
+        ON DELETE CASCADE
         ON UPDATE CASCADE
 );

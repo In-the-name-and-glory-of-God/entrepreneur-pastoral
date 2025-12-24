@@ -3,12 +3,12 @@ package dto
 import "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 
 type IndustryCreateRequest struct {
-	Name string `json:"name"`
+	Key string `json:"key"`
 }
 
 type IndustryUpdateRequest struct {
-	ID   int16  `json:"id"`
-	Name string `json:"name"`
+	ID  int16  `json:"id"`
+	Key string `json:"key"`
 }
 
 type IndustryListResponse struct {

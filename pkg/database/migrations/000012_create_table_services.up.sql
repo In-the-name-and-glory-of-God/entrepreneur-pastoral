@@ -18,6 +18,6 @@ CREATE TABLE IF NOT EXISTS services (
     CONSTRAINT fk_business
         FOREIGN KEY(business_id)
         REFERENCES business(id)
-        ON DELETE RESTRICT -- Prevents deleting a business if services are still assigned to it
+        ON DELETE CASCADE
         ON UPDATE CASCADE
 );

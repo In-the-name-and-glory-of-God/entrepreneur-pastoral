@@ -1,14 +1,16 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -33,7 +35,7 @@ func NewTokenManager(secret string) *TokenManager {
 	return &TokenManager{secret: secret}
 }
 
-// GenerateToken creates a new JWT token for the given user ID, email, and role ID.
+// GenerateToken creates a new JWT token for the given user ID.
 func (t *TokenManager) GenerateToken(userID string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
@@ -83,12 +85,13 @@ func VerifyPassword(hashedPassword []byte, password string) error {
 }
 
 func IsValidEmail(email string) error {
-	// Simple email validation logic
 	if email == "" {
 		return fmt.Errorf("email cannot be empty")
 	}
 
-	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+	// RFC 5322 compliant email regex pattern
+	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`)
+	if !emailRegex.MatchString(email) {
 		return fmt.Errorf("invalid email format")
 	}
 
@@ -113,8 +116,14 @@ func IsStrongPassword(password string) error {
 	return nil
 }
 
+// GenerateRandomToken generates a cryptographically secure random token of the specified length.
+// The returned token is a hex-encoded string, so the actual string length will be 2 * length.
 func GenerateRandomToken(length int) (string, error) {
-	return uuid.NewString(), nil
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
 
 func SetRefreshTokenCookie(w http.ResponseWriter, value string) {

@@ -26,152 +26,158 @@ func NewUserHandler(logger *zap.SugaredLogger, userService *application.UserServ
 }
 
 func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 
-	user, err := h.userService.GetByID(r.Context(), id)
+	user, err := h.userService.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrUserNotFound {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to get user by ID", "userID", id, "error", err)
-		response.InternalServerError(w, "Failed to get user")
+		response.InternalServerErrorT(ctx, w, "error.failed_get_user")
 		return
 	}
 
-	response.OK(w, "User retrieved successfully", user)
+	response.OKT(ctx, w, "success.user_retrieved", user)
 }
 
 func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.UserListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	list, err := h.userService.List(r.Context(), &req)
+	list, err := h.userService.List(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to list users", "error", err)
-		response.InternalServerError(w, "Failed to list users")
+		response.InternalServerErrorT(ctx, w, "error.failed_list_users")
 		return
 	}
 
-	response.OK(w, "Users listed successfully", list)
+	response.OKT(ctx, w, "success.users_listed", list)
 }
 
 func (h *UserHandler) SetIsActive(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 
 	var req dto.UserUpdatePropertyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.userService.UpdateActiveStatus(r.Context(), &req); err != nil {
+	if err := h.userService.UpdateActiveStatus(ctx, &req); err != nil {
 		if err == domain.ErrUserNotFound {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to set is_active flag", "userID", id, "error", err)
-		response.InternalServerError(w, "Failed to update is_active flag")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_active_flag")
 		return
 	}
 
-	response.OK(w, "User active status updated successfully", nil)
+	response.OKT(ctx, w, "success.user_active_updated", nil)
 }
 
 func (h *UserHandler) SetIsCatholic(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 
 	var req dto.UserUpdatePropertyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.userService.UpdateCatholicStatus(r.Context(), &req); err != nil {
+	if err := h.userService.UpdateCatholicStatus(ctx, &req); err != nil {
 		if err == domain.ErrUserNotFound {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to set is_catholic flag", "userID", id, "error", err)
-		response.InternalServerError(w, "Failed to update is_catholic flag")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_catholic_flag")
 		return
 	}
 
-	response.OK(w, "User catholic status updated successfully", nil)
+	response.OKT(ctx, w, "success.user_catholic_updated", nil)
 }
 
 func (h *UserHandler) SetIsEntrepreneur(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 
 	var req dto.UserUpdatePropertyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.userService.UpdateEntrepreneurStatus(r.Context(), &req); err != nil {
+	if err := h.userService.UpdateEntrepreneurStatus(ctx, &req); err != nil {
 		if err == domain.ErrUserNotFound {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to set is_entrepreneur flag", "userID", id, "error", err)
-		response.InternalServerError(w, "Failed to update is_entrepreneur flag")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_entrepreneur_flag")
 		return
 	}
 
-	response.OK(w, "User entrepreneur status updated successfully", nil)
+	response.OKT(ctx, w, "success.user_entrepreneur_updated", nil)
 }
 
 func (h *UserHandler) SetRole(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 
 	var req dto.UserSetRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.userService.SetRole(r.Context(), &req); err != nil {
+	if err := h.userService.SetRole(ctx, &req); err != nil {
 		if err == domain.ErrUserNotFound {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorw("failed to set user role", "userID", id, "error", err)
-		response.InternalServerError(w, "Failed to set user role")
+		response.InternalServerErrorT(ctx, w, "error.failed_set_role")
 		return
 	}
 
-	response.OK(w, "User role updated successfully", nil)
+	response.OKT(ctx, w, "success.user_role_updated", nil)
 }

@@ -33,6 +33,10 @@ const (
 	CACHE_PREFIX_EMAIL_VERIFICATION
 	CACHE_PREFIX_PASSWORD_RESET
 	CACHE_PREFIX_REFRESH_TOKEN
+	CACHE_PREFIX_JOB_PROFILE
+	CACHE_PREFIX_JOB_PROFILE_LIST
+	CACHE_PREFIX_BUSINESS
+	CACHE_PREFIX_BUSINESS_LIST
 )
 
 func (p CachePrefix) String() string {
@@ -45,6 +49,14 @@ func (p CachePrefix) String() string {
 		return "password_reset"
 	case CACHE_PREFIX_REFRESH_TOKEN:
 		return "refresh_token"
+	case CACHE_PREFIX_JOB_PROFILE:
+		return "job_profile"
+	case CACHE_PREFIX_JOB_PROFILE_LIST:
+		return "job_profile_list"
+	case CACHE_PREFIX_BUSINESS:
+		return "business"
+	case CACHE_PREFIX_BUSINESS_LIST:
+		return "business_list"
 	default:
 		return ""
 	}
@@ -121,6 +133,9 @@ func (c Cache) GetString(ctx context.Context, key string) (string, error) {
 func (c Cache) GetStringAndDel(ctx context.Context, key string) (string, error) {
 	val, err := c.client.GetDel(ctx, key).Result()
 	if err != nil {
+		if err == redis.Nil {
+			return "", ErrCacheMiss
+		}
 		return "", err
 	}
 
@@ -148,11 +163,7 @@ func (c Cache) Set(ctx context.Context, key string, val any, expire time.Duratio
 }
 
 func (c Cache) SetString(ctx context.Context, key string, value string, expiration time.Duration) error {
-	if err := c.client.Set(ctx, key, value, expiration).Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.client.Set(ctx, key, value, expiration).Err()
 }
 
 func (c Cache) Del(ctx context.Context, key string) error {

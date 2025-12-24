@@ -34,181 +34,257 @@ func NewAuthHandler(logger *zap.SugaredLogger, cache storage.CacheStorage, authS
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.UserRegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
 	if err := auth.IsValidEmail(req.Email); err != nil {
-		response.BadRequest(w, "Valid email is required: "+err.Error(), nil)
+		response.BadRequestT(ctx, w, "error.valid_email_required", nil)
 		return
 	}
 
 	if err := auth.IsStrongPassword(req.Password); err != nil {
-		response.BadRequest(w, "Password does not meet strength requirements: "+err.Error(), nil)
+		response.BadRequestT(ctx, w, "error.password_strength", nil)
 		return
 	}
 
-	if err := h.userService.Create(r.Context(), &req); err != nil {
+	user, err := h.userService.Create(ctx, &req)
+	if err != nil {
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
-			response.Conflict(w, "Email already exists", nil)
+			response.ConflictT(ctx, w, "error.email_already_exists", nil)
 			return
 		}
 		if errors.Is(err, domain.ErrDocumentIDAlreadyExists) {
-			response.Conflict(w, "Document ID already exists", nil)
+			response.ConflictT(ctx, w, "error.document_id_already_exists", nil)
 			return
 		}
 
 		h.logger.Errorf("Failed to register user", "error", err)
-		response.InternalServerError(w, "Failed to register user")
+		response.InternalServerErrorT(ctx, w, "error.failed_register_user")
 		return
 	}
 
-	// TODO: Send verification email logic here
+	// Send verification email
+	if err := h.authService.SendVerificationEmail(ctx, user); err != nil {
+		h.logger.Errorw("Failed to send verification email", "userID", user.ID, "error", err)
+		// Don't fail registration if email sending fails, just log the error
+	}
 
-	response.Created(w, "User registered successfully", nil)
+	response.CreatedT(ctx, w, "success.user_registered", nil)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.UserLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
 	if req.Email == "" {
-		response.BadRequest(w, "Email is required", nil)
+		response.BadRequestT(ctx, w, "error.email_required", nil)
 		return
 	}
 
 	if req.Password == "" {
-		response.BadRequest(w, "Password is required", nil)
+		response.BadRequestT(ctx, w, "error.password_required", nil)
 		return
 	}
 
-	token, err := h.authService.Login(r.Context(), &req)
+	token, err := h.authService.Login(ctx, &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserInactive) {
-			response.Forbidden(w, "User account is inactive")
+			response.ForbiddenT(ctx, w, "error.user_inactive")
 			return
 		} else if errors.Is(err, domain.ErrEmailNotVerified) {
-			response.Forbidden(w, "Email address is not verified")
+			response.ForbiddenT(ctx, w, "error.email_not_verified")
 			return
 		} else if errors.Is(err, domain.ErrInvalidPassword) || errors.Is(err, domain.ErrUserNotFound) {
-			response.Unauthorized(w, "Invalid credentials")
+			response.UnauthorizedT(ctx, w, "error.invalid_credentials")
 			return
 		}
 
 		h.logger.Errorf("Failed to login user", "error", err)
-		response.InternalServerError(w, "Failed to login user")
+		response.InternalServerErrorT(ctx, w, "error.failed_login_user")
 		return
 	}
 
 	// TODO: Set refresh token cookie logic here
 	// auth.SetRefreshTokenCookie(w, user.ID.String())
 
-	response.OK(w, "Login successful", dto.UserLoginResponse{
+	response.OKT(ctx, w, "success.login", dto.UserLoginResponse{
 		Token: token,
 	})
 }
 
-func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+// RequestPasswordReset handles the initial password reset request (sends email with reset link)
+func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.UserResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	if req.Email != "" {
-		if err := auth.IsValidEmail(req.Email); err != nil {
-			response.BadRequest(w, "Valid email is required: "+err.Error(), nil)
-			return
-		}
-		// TODO: Send email with password reset link logic here
-		// TODO: Generate token and store in cache with expiration
-		response.OK(w, "Password reset link sent to email", nil)
+	if req.Email == "" {
+		response.BadRequestT(ctx, w, "error.email_required", nil)
+		return
+	}
+
+	if err := auth.IsValidEmail(req.Email); err != nil {
+		response.BadRequestT(ctx, w, "error.valid_email_required", nil)
+		return
+	}
+
+	// Get user by email - don't reveal if email exists or not for security
+	user, err := h.authService.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		// Return success even if user not found to prevent email enumeration
+		response.OKT(ctx, w, "success.password_reset_sent", nil)
+		return
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		response.OKT(ctx, w, "success.password_reset_sent", nil)
+		return
+	}
+
+	// Send password reset email
+	if err := h.authService.SendPasswordResetEmail(ctx, user); err != nil {
+		h.logger.Errorw("Failed to send password reset email", "email", req.Email, "error", err)
+	}
+
+	response.OKT(ctx, w, "success.password_reset_sent", nil)
+}
+
+// ConfirmPasswordReset handles the actual password reset (with token validation)
+func (h *AuthHandler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req dto.UserResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
 	id := chi.URLParam(r, "id")
 	token := chi.URLParam(r, "token")
 	if token == "" {
-		response.BadRequest(w, "Missing token", nil)
+		response.BadRequestT(ctx, w, "error.missing_token", nil)
 		return
 	}
 
-	// TODO: Validate token from cache logic here
-
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id", nil)
 		return
 	}
 	req.ID = userID
 
-	if err := auth.IsStrongPassword(req.NewPassword); err != nil {
-		response.BadRequest(w, "New password does not meet strength requirements: "+err.Error(), nil)
+	// Validate token from cache
+	cacheKey := h.cache.BuildKey(storage.CACHE_PREFIX_PASSWORD_RESET, token)
+	cachedUserID, err := h.cache.GetStringAndDel(ctx, cacheKey)
+	if err != nil {
+		if errors.Is(err, storage.ErrCacheMiss) {
+			response.BadRequestT(ctx, w, "error.invalid_token", nil)
+			return
+		}
+		h.logger.Errorf("Failed to retrieve password reset token", "error", err)
+		response.InternalServerErrorT(ctx, w, "error.failed_reset_password")
 		return
 	}
 
-	if err := h.authService.UpdatePassword(r.Context(), &req); err != nil {
+	// Verify the token belongs to the correct user
+	if cachedUserID != userID.String() {
+		response.BadRequestT(ctx, w, "error.invalid_token_for_user", nil)
+		return
+	}
+
+	// Validate user status before allowing password reset
+	userResp, err := h.userService.GetByID(ctx, userID)
+	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
+			return
+		}
+		h.logger.Errorf("Failed to get user for password reset", "error", err)
+		response.InternalServerErrorT(ctx, w, "error.failed_reset_password")
+		return
+	}
+
+	if !userResp.User.IsActive {
+		response.ForbiddenT(ctx, w, "error.user_inactive")
+		return
+	}
+
+	if err := auth.IsStrongPassword(req.NewPassword); err != nil {
+		response.BadRequestT(ctx, w, "error.new_password_strength", nil)
+		return
+	}
+
+	if err := h.authService.UpdatePassword(ctx, &req); err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		} else if errors.Is(err, domain.ErrInvalidPassword) {
-			response.Unauthorized(w, "Old password is incorrect")
+			response.UnauthorizedT(ctx, w, "error.old_password_incorrect")
 			return
 		}
 
 		h.logger.Errorf("Failed to update password", "error", err)
-		response.InternalServerError(w, "Failed to update password")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_password")
 		return
 	}
 
-	response.OK(w, "Password updated successfully", nil)
+	response.OKT(ctx, w, "success.password_updated", nil)
 }
 
 func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	token := chi.URLParam(r, "token")
 	if token == "" {
-		response.BadRequest(w, "Missing token", nil)
+		response.BadRequestT(ctx, w, "error.missing_token", nil)
 		return
 	}
 
-	id, err := h.cache.GetStringAndDel(r.Context(), h.cache.BuildKey(storage.CACHE_PREFIX_EMAIL_VERIFICATION, token))
+	id, err := h.cache.GetStringAndDel(ctx, h.cache.BuildKey(storage.CACHE_PREFIX_EMAIL_VERIFICATION, token))
 	if err != nil {
 		if errors.Is(err, storage.ErrCacheMiss) {
-			response.BadRequest(w, "Invalid or expired token", nil)
+			response.BadRequestT(ctx, w, "error.invalid_token", nil)
 			return
 		}
 
 		h.logger.Errorf("Failed to retrieve email verification token", "error", err)
-		response.InternalServerError(w, "Failed to verify email")
+		response.InternalServerErrorT(ctx, w, "error.failed_verify_email")
 		return
 	}
 
 	userID, err := uuid.Parse(id)
 	if err != nil {
-		response.BadRequest(w, "Invalid user ID in token", nil)
+		response.BadRequestT(ctx, w, "error.invalid_user_id_in_token", nil)
 		return
 	}
 
-	if err := h.userService.VerifyEmail(r.Context(), userID); err != nil {
+	if err := h.userService.VerifyEmail(ctx, userID); err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			response.NotFound(w, "User not found")
+			response.NotFoundT(ctx, w, "error.user_not_found")
 			return
 		}
 
 		h.logger.Errorf("Failed to verify email", "error", err)
-		response.InternalServerError(w, "Failed to verify email")
+		response.InternalServerErrorT(ctx, w, "error.failed_verify_email")
 		return
 	}
+
+	response.OKT(ctx, w, "success.email_verified", nil)
 }
 
 // TODO: Set proper refresh token expiration and security flags
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	response.NotImplemented(w, "Refresh token functionality not implemented yet")
+	response.NotImplementedT(r.Context(), w, "error.not_implemented")
 }

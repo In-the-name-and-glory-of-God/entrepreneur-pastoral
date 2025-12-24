@@ -26,115 +26,120 @@ func NewProductHandler(logger *zap.SugaredLogger, productService *application.Pr
 }
 
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.ProductCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	product, err := h.productService.Create(r.Context(), &req)
+	product, err := h.productService.Create(ctx, &req)
 	if err != nil {
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to create product for this business")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_create_product")
 			return
 		}
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 		h.logger.Errorw("failed to create product", "error", err)
-		response.InternalServerError(w, "Failed to create product")
+		response.InternalServerErrorT(ctx, w, "error.failed_create_product")
 		return
 	}
 
-	response.Created(w, "Product created successfully", product)
+	response.CreatedT(ctx, w, "success.product_created", product)
 }
 
 func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid product ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_product_id", nil)
 		return
 	}
 
 	var req dto.ProductUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.productService.Update(r.Context(), &req); err != nil {
+	if err := h.productService.Update(ctx, &req); err != nil {
 		if err == domain.ErrProductNotFound {
-			response.NotFound(w, "Product not found")
+			response.NotFoundT(ctx, w, "error.product_not_found")
 			return
 		}
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to update product")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_update_product")
 			return
 		}
 		h.logger.Errorw("failed to update product", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to update product")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_product")
 		return
 	}
 
-	response.OK(w, "Product updated successfully", nil)
+	response.OKT(ctx, w, "success.product_updated", nil)
 }
 
 func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid product ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_product_id", nil)
 		return
 	}
 
-	if err := h.productService.Delete(r.Context(), id); err != nil {
+	if err := h.productService.Delete(ctx, id); err != nil {
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to delete product")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_delete_product")
 			return
 		}
 		h.logger.Errorw("failed to delete product", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to delete product")
+		response.InternalServerErrorT(ctx, w, "error.failed_delete_product")
 		return
 	}
 
-	response.OK(w, "Product deleted successfully", nil)
+	response.OKT(ctx, w, "success.product_deleted", nil)
 }
 
 func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid product ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_product_id", nil)
 		return
 	}
 
-	product, err := h.productService.GetByID(r.Context(), id)
+	product, err := h.productService.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrProductNotFound {
-			response.NotFound(w, "Product not found")
+			response.NotFoundT(ctx, w, "error.product_not_found")
 			return
 		}
 		h.logger.Errorw("failed to get product", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to get product")
+		response.InternalServerErrorT(ctx, w, "error.failed_get_product")
 		return
 	}
 
-	response.OK(w, "Product retrieved successfully", product)
+	response.OKT(ctx, w, "success.product_retrieved", product)
 }
 
 func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.ProductListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	result, err := h.productService.List(r.Context(), &req)
+	result, err := h.productService.List(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to list products", "error", err)
-		response.InternalServerError(w, "Failed to list products")
+		response.InternalServerErrorT(ctx, w, "error.failed_list_products")
 		return
 	}
 
-	response.OK(w, "Products retrieved successfully", result)
+	response.OKT(ctx, w, "success.products_listed", result)
 }

@@ -23,16 +23,16 @@ func NewFieldOfWorkService(logger *zap.SugaredLogger, fieldOfWorkRepo domain.Fie
 }
 
 func (s *FieldOfWorkService) Create(ctx context.Context, req *dto.FieldOfWorkCreateRequest) (*domain.FieldOfWork, error) {
-	// Check if field of work with same name already exists
-	if _, err := s.fieldOfWorkRepo.GetByName(ctx, req.Name); err == nil {
+	// Check if field of work with same key already exists
+	if _, err := s.fieldOfWorkRepo.GetByKey(ctx, req.Key); err == nil {
 		return nil, domain.ErrFieldOfWorkAlreadyExists
 	} else if !errors.Is(err, domain.ErrFieldOfWorkNotFound) {
-		s.logger.Errorw("failed to check existing field of work", "name", req.Name, "error", err)
+		s.logger.Errorw("failed to check existing field of work", "key", req.Key, "error", err)
 		return nil, response.ErrInternalServerError
 	}
 
 	fieldOfWork := &domain.FieldOfWork{
-		Name: req.Name,
+		Key: req.Key,
 	}
 
 	if err := s.fieldOfWorkRepo.Create(ctx, fieldOfWork); err != nil {
@@ -54,14 +54,14 @@ func (s *FieldOfWorkService) Update(ctx context.Context, req *dto.FieldOfWorkUpd
 		return response.ErrInternalServerError
 	}
 
-	// Check if updating to a name that already exists (and belongs to a different field of work)
-	if existingFieldOfWork, err := s.fieldOfWorkRepo.GetByName(ctx, req.Name); err == nil && existingFieldOfWork.ID != req.ID {
+	// Check if updating to a key that already exists (and belongs to a different field of work)
+	if existingFieldOfWork, err := s.fieldOfWorkRepo.GetByKey(ctx, req.Key); err == nil && existingFieldOfWork.ID != req.ID {
 		return domain.ErrFieldOfWorkAlreadyExists
 	}
 
 	fieldOfWork := &domain.FieldOfWork{
-		ID:   req.ID,
-		Name: req.Name,
+		ID:  req.ID,
+		Key: req.Key,
 	}
 
 	if err := s.fieldOfWorkRepo.Update(ctx, fieldOfWork); err != nil {

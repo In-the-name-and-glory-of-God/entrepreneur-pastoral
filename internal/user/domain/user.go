@@ -30,6 +30,8 @@ type Role struct {
 type User struct {
 	ID               uuid.UUID      `json:"id" db:"id"`
 	RoleID           int16          `json:"role_id" db:"role_id"`
+	AddressID        uuid.UUID      `json:"address_id" db:"address_id"`
+	ChurchID         uuid.UUID      `json:"church_id" db:"church_id"`
 	FirstName        string         `json:"first_name" db:"first_name"`
 	LastName         string         `json:"last_name" db:"last_name"`
 	Email            string         `json:"email" db:"email"`
@@ -37,6 +39,7 @@ type User struct {
 	DocumentID       string         `json:"document_id" db:"document_id"`
 	PhoneCountryCode sql.NullString `json:"phone_country_code" db:"phone_country_code"`
 	PhoneNumber      sql.NullString `json:"phone_number" db:"phone_number"`
+	Language         sql.NullString `json:"language" db:"language"`
 	IsActive         bool           `json:"is_active" db:"is_active"`
 	IsVerified       bool           `json:"is_verified" db:"is_verified"`
 	IsCatholic       bool           `json:"is_catholic" db:"is_catholic"`

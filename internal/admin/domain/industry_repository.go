@@ -8,5 +8,5 @@ type IndustryRepository interface {
 	Delete(ctx context.Context, id int16) error
 	GetAll(ctx context.Context) ([]*Industry, error)
 	GetByID(ctx context.Context, id int16) (*Industry, error)
-	GetByName(ctx context.Context, name string) (*Industry, error)
+	GetByKey(ctx context.Context, key string) (*Industry, error)
 }

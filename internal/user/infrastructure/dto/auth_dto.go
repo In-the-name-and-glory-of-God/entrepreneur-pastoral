@@ -2,17 +2,20 @@ package dto
 
 import (
 	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
+	adminDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/infrastructure/dto"
 	"github.com/google/uuid"
 )
 
 type UserRegisterRequest struct {
-	FirstName        string `json:"first_name"`
-	LastName         string `json:"last_name"`
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	DocumentID       string `json:"document_id"`
-	PhoneCountryCode string `json:"phone_country_code"`
-	PhoneNumber      string `json:"phone_number"`
+	FirstName        string                        `json:"first_name"`
+	LastName         string                        `json:"last_name"`
+	Email            string                        `json:"email"`
+	Password         string                        `json:"password"`
+	DocumentID       string                        `json:"document_id"`
+	PhoneCountryCode string                        `json:"phone_country_code"`
+	PhoneNumber      string                        `json:"phone_number"`
+	Address          adminDto.AddressCreateRequest `json:"address"`
+	ChurchID         uuid.UUID                     `json:"church_id"`
 	// JobProfile
 	OpenToWork   bool                      `json:"open_to_work"`
 	CVPath       string                    `json:"cv_path"`

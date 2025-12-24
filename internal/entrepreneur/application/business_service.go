@@ -2,25 +2,38 @@ package application
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"time"
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
 	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
+const (
+	businessCacheTTL     = 15 * time.Minute
+	businessListCacheTTL = 5 * time.Minute
+)
+
 type BusinessService struct {
 	logger       *zap.SugaredLogger
+	cache        storage.CacheStorage
 	businessRepo domain.BusinessRepository
 }
 
-func NewBusinessService(logger *zap.SugaredLogger, businessRepo domain.BusinessRepository) *BusinessService {
+func NewBusinessService(logger *zap.SugaredLogger, cache storage.CacheStorage, businessRepo domain.BusinessRepository) *BusinessService {
 	return &BusinessService{
 		logger:       logger,
+		cache:        cache,
 		businessRepo: businessRepo,
 	}
 }
@@ -44,6 +57,9 @@ func (s *BusinessService) Create(ctx context.Context, req *dto.BusinessCreateReq
 		s.logger.Errorw("failed to create business", "error", err)
 		return nil, response.ErrInternalServerError
 	}
+
+	// Invalidate list cache
+	s.invalidateListCache(ctx)
 
 	return business, nil
 }
@@ -74,6 +90,10 @@ func (s *BusinessService) Update(ctx context.Context, req *dto.BusinessUpdateReq
 		return response.ErrInternalServerError
 	}
 
+	// Invalidate caches
+	s.invalidateBusinessCache(ctx, req.ID)
+	s.invalidateListCache(ctx)
+
 	return nil
 }
 
@@ -93,11 +113,23 @@ func (s *BusinessService) Delete(ctx context.Context, id uuid.UUID) error {
 		return response.ErrInternalServerError
 	}
 
+	// Invalidate caches
+	s.invalidateBusinessCache(ctx, id)
+	s.invalidateListCache(ctx)
+
 	return nil
 }
 
 func (s *BusinessService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Business, error) {
-	business, err := s.businessRepo.GetByID(ctx, id)
+	// Try to get from cache first
+	cacheKey := s.cache.BuildKey(storage.CACHE_PREFIX_BUSINESS, id.String())
+	var business domain.Business
+	if err := s.cache.Get(ctx, cacheKey, &business); err == nil {
+		return &business, nil
+	}
+
+	// Cache miss - get from database
+	businessFromDB, err := s.businessRepo.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrBusinessNotFound {
 			return nil, err
@@ -107,10 +139,25 @@ func (s *BusinessService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Bu
 		return nil, response.ErrInternalServerError
 	}
 
-	return business, nil
+	// Store in cache
+	if err := s.cache.Set(ctx, cacheKey, businessFromDB, businessCacheTTL); err != nil {
+		s.logger.Warnw("failed to cache business", "id", id, "error", err)
+	}
+
+	return businessFromDB, nil
 }
 
 func (s *BusinessService) List(ctx context.Context, req *dto.BusinessListRequest) (*dto.BusinessListResponse, error) {
+	// Generate cache key based on filter parameters
+	cacheKey := s.buildListCacheKey(req)
+
+	// Try to get from cache
+	var cachedResponse dto.BusinessListResponse
+	if err := s.cache.Get(ctx, cacheKey, &cachedResponse); err == nil {
+		return &cachedResponse, nil
+	}
+
+	// Cache miss - get from database
 	businesses, err := s.businessRepo.List(ctx, req)
 	if err != nil && err != domain.ErrBusinessNotFound {
 		s.logger.Errorw("failed to list businesses", "error", err)
@@ -126,12 +173,19 @@ func (s *BusinessService) List(ctx context.Context, req *dto.BusinessListRequest
 		}
 	}
 
-	return &dto.BusinessListResponse{
+	resp := &dto.BusinessListResponse{
 		Businesses: businesses,
 		Count:      count,
 		Limit:      req.Limit,
 		Offset:     req.Offset,
-	}, nil
+	}
+
+	// Store in cache
+	if err := s.cache.Set(ctx, cacheKey, resp, businessListCacheTTL); err != nil {
+		s.logger.Warnw("failed to cache business list", "error", err)
+	}
+
+	return resp, nil
 }
 
 func (s *BusinessService) UpdateActiveStatus(ctx context.Context, req *dto.BusinessUpdatePropertyRequest) error {
@@ -152,5 +206,43 @@ func (s *BusinessService) UpdateActiveStatus(ctx context.Context, req *dto.Busin
 		return response.ErrInternalServerError
 	}
 
+	// Invalidate caches
+	s.invalidateBusinessCache(ctx, req.ID)
+	s.invalidateListCache(ctx)
+
 	return nil
+}
+
+// Cache helper methods
+
+// buildListCacheKey generates a unique cache key based on filter parameters
+func (s *BusinessService) buildListCacheKey(req *dto.BusinessListRequest) string {
+	// Serialize the filter to JSON and hash it for a consistent key
+	filterBytes, _ := json.Marshal(req)
+	hash := sha256.Sum256(filterBytes)
+	return s.cache.BuildKey(storage.CACHE_PREFIX_BUSINESS_LIST, hex.EncodeToString(hash[:8]))
+}
+
+// invalidateBusinessCache removes a specific business from cache
+func (s *BusinessService) invalidateBusinessCache(ctx context.Context, id uuid.UUID) {
+	cacheKey := s.cache.BuildKey(storage.CACHE_PREFIX_BUSINESS, id.String())
+	if err := s.cache.Del(ctx, cacheKey); err != nil && !errors.Is(err, storage.ErrCacheMiss) {
+		s.logger.Warnw("failed to invalidate business cache", "id", id, "error", err)
+	}
+}
+
+// invalidateListCache removes all business list caches using scan and delete
+func (s *BusinessService) invalidateListCache(ctx context.Context) {
+	pattern := s.cache.BuildKey(storage.CACHE_PREFIX_BUSINESS_LIST, "*")
+	keys, err := s.cache.Scan(ctx, pattern)
+	if err != nil {
+		s.logger.Warnw("failed to scan business list cache keys", "error", err)
+		return
+	}
+
+	for _, key := range keys {
+		if err := s.cache.Del(ctx, key); err != nil && !errors.Is(err, storage.ErrCacheMiss) {
+			s.logger.Warnw("failed to invalidate business list cache", "key", key, "error", err)
+		}
+	}
 }

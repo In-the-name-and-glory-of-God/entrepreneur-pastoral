@@ -26,107 +26,112 @@ func NewBusinessHandler(logger *zap.SugaredLogger, businessService *application.
 }
 
 func (h *BusinessHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.BusinessCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	business, err := h.businessService.Create(r.Context(), &req)
+	business, err := h.businessService.Create(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to create business", "error", err)
-		response.InternalServerError(w, "Failed to create business")
+		response.InternalServerErrorT(ctx, w, "error.failed_create_business")
 		return
 	}
 
-	response.Created(w, "Business created successfully", business)
+	response.CreatedT(ctx, w, "success.business_created", business)
 }
 
 func (h *BusinessHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid business ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_business_id", nil)
 		return
 	}
 
 	var req dto.BusinessUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.businessService.Update(r.Context(), &req); err != nil {
+	if err := h.businessService.Update(ctx, &req); err != nil {
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to update business")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_update_business")
 			return
 		}
 		h.logger.Errorw("failed to update business", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to update business")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_business")
 		return
 	}
 
-	response.OK(w, "Business updated successfully", nil)
+	response.OKT(ctx, w, "success.business_updated", nil)
 }
 
 func (h *BusinessHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid business ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_business_id", nil)
 		return
 	}
 
-	if err := h.businessService.Delete(r.Context(), id); err != nil {
+	if err := h.businessService.Delete(ctx, id); err != nil {
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to delete business")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_delete_business")
 			return
 		}
 		h.logger.Errorw("failed to delete business", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to delete business")
+		response.InternalServerErrorT(ctx, w, "error.failed_delete_business")
 		return
 	}
 
-	response.OK(w, "Business deleted successfully", nil)
+	response.OKT(ctx, w, "success.business_deleted", nil)
 }
 
 func (h *BusinessHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid business ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_business_id", nil)
 		return
 	}
 
-	business, err := h.businessService.GetByID(r.Context(), id)
+	business, err := h.businessService.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 		h.logger.Errorw("failed to get business", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to get business")
+		response.InternalServerErrorT(ctx, w, "error.failed_get_business")
 		return
 	}
 
-	response.OK(w, "Business retrieved successfully", business)
+	response.OKT(ctx, w, "success.business_retrieved", business)
 }
 
 func (h *BusinessHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.BusinessListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	result, err := h.businessService.List(r.Context(), &req)
+	result, err := h.businessService.List(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to list businesses", "error", err)
-		response.InternalServerError(w, "Failed to list businesses")
+		response.InternalServerErrorT(ctx, w, "error.failed_list_businesses")
 		return
 	}
 
-	response.OK(w, "Businesses retrieved successfully", result)
+	response.OKT(ctx, w, "success.businesses_listed", result)
 }

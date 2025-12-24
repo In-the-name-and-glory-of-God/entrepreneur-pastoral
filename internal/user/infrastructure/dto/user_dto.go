@@ -10,6 +10,7 @@ type UserAsContext struct {
 	ID             uuid.UUID `json:"id"`
 	Email          string    `json:"email"`
 	RoleID         int16     `json:"role_id"`
+	Language       string    `json:"language"`
 	IsCatholic     bool      `json:"is_catholic"`
 	IsEntrepreneur bool      `json:"is_entrepreneur"`
 }
@@ -28,6 +29,8 @@ type UserUpdateRequest struct {
 	DocumentID       string    `json:"document_id"`
 	PhoneCountryCode string    `json:"phone_country_code"`
 	PhoneNumber      string    `json:"phone_number"`
+	AddressID        uuid.UUID `json:"address_id"`
+	ChurchID         uuid.UUID `json:"church_id"`
 	// NotificationPreferences
 	NotifyByEmail bool `json:"notify_by_email"`
 	NotifyBySms   bool `json:"notify_by_sms"`

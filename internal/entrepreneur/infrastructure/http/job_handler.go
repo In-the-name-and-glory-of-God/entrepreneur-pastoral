@@ -26,115 +26,120 @@ func NewJobHandler(logger *zap.SugaredLogger, jobService *application.JobService
 }
 
 func (h *JobHandler) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.JobCreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	job, err := h.jobService.Create(r.Context(), &req)
+	job, err := h.jobService.Create(ctx, &req)
 	if err != nil {
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to create job for this business")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_create_job")
 			return
 		}
 		if err == domain.ErrBusinessNotFound {
-			response.NotFound(w, "Business not found")
+			response.NotFoundT(ctx, w, "error.business_not_found")
 			return
 		}
 		h.logger.Errorw("failed to create job", "error", err)
-		response.InternalServerError(w, "Failed to create job")
+		response.InternalServerErrorT(ctx, w, "error.failed_create_job")
 		return
 	}
 
-	response.Created(w, "Job created successfully", job)
+	response.CreatedT(ctx, w, "success.job_created", job)
 }
 
 func (h *JobHandler) Update(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid job ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_job_id", nil)
 		return
 	}
 
 	var req dto.JobUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 	req.ID = id
 
-	if err := h.jobService.Update(r.Context(), &req); err != nil {
+	if err := h.jobService.Update(ctx, &req); err != nil {
 		if err == domain.ErrJobNotFound {
-			response.NotFound(w, "Job not found")
+			response.NotFoundT(ctx, w, "error.job_not_found")
 			return
 		}
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to update job")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_update_job")
 			return
 		}
 		h.logger.Errorw("failed to update job", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to update job")
+		response.InternalServerErrorT(ctx, w, "error.failed_update_job")
 		return
 	}
 
-	response.OK(w, "Job updated successfully", nil)
+	response.OKT(ctx, w, "success.job_updated", nil)
 }
 
 func (h *JobHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid job ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_job_id", nil)
 		return
 	}
 
-	if err := h.jobService.Delete(r.Context(), id); err != nil {
+	if err := h.jobService.Delete(ctx, id); err != nil {
 		if err == domain.ErrUnauthorized {
-			response.Unauthorized(w, "Unauthorized to delete job")
+			response.UnauthorizedT(ctx, w, "error.unauthorized_delete_job")
 			return
 		}
 		h.logger.Errorw("failed to delete job", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to delete job")
+		response.InternalServerErrorT(ctx, w, "error.failed_delete_job")
 		return
 	}
 
-	response.OK(w, "Job deleted successfully", nil)
+	response.OKT(ctx, w, "success.job_deleted", nil)
 }
 
 func (h *JobHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		response.BadRequest(w, "Invalid job ID", nil)
+		response.BadRequestT(ctx, w, "error.invalid_job_id", nil)
 		return
 	}
 
-	job, err := h.jobService.GetByID(r.Context(), id)
+	job, err := h.jobService.GetByID(ctx, id)
 	if err != nil {
 		if err == domain.ErrJobNotFound {
-			response.NotFound(w, "Job not found")
+			response.NotFoundT(ctx, w, "error.job_not_found")
 			return
 		}
 		h.logger.Errorw("failed to get job", "id", id, "error", err)
-		response.InternalServerError(w, "Failed to get job")
+		response.InternalServerErrorT(ctx, w, "error.failed_get_job")
 		return
 	}
 
-	response.OK(w, "Job retrieved successfully", job)
+	response.OKT(ctx, w, "success.job_retrieved", job)
 }
 
 func (h *JobHandler) List(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req dto.JobListRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.BadRequest(w, "Invalid request body", nil)
+		response.BadRequestT(ctx, w, "error.invalid_request_body", nil)
 		return
 	}
 
-	result, err := h.jobService.List(r.Context(), &req)
+	result, err := h.jobService.List(ctx, &req)
 	if err != nil {
 		h.logger.Errorw("failed to list jobs", "error", err)
-		response.InternalServerError(w, "Failed to list jobs")
+		response.InternalServerErrorT(ctx, w, "error.failed_list_jobs")
 		return
 	}
 
-	response.OK(w, "Jobs retrieved successfully", result)
+	response.OKT(ctx, w, "success.jobs_listed", result)
 }

@@ -1,9 +1,12 @@
 package response
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/i18n"
 )
 
 // General errors
@@ -142,4 +145,105 @@ func SuccessWithMeta(w http.ResponseWriter, statusCode int, message string, data
 // OKWithMeta writes a 200 OK response with metadata
 func OKWithMeta(w http.ResponseWriter, message string, data interface{}, meta *Meta) {
 	SuccessWithMeta(w, http.StatusOK, message, data, meta)
+}
+
+// =============================================================================
+// Context-aware response functions (i18n translation support)
+// These functions accept a context and translation key instead of raw message
+// =============================================================================
+
+// T translates a key using the language from context
+func T(ctx context.Context, key string) string {
+	return i18n.T(ctx, key)
+}
+
+// TParams translates a key with parameters using the language from context
+func TParams(ctx context.Context, key string, params map[string]string) string {
+	return i18n.TWithParams(ctx, key, params)
+}
+
+// SuccessT writes a successful JSON response with translated message
+func SuccessT(ctx context.Context, w http.ResponseWriter, statusCode int, messageKey string, data interface{}) {
+	JSON(w, statusCode, Response{
+		Success: true,
+		Message: i18n.T(ctx, messageKey),
+		Data:    data,
+	})
+}
+
+// CreatedT writes a 201 Created response with translated message
+func CreatedT(ctx context.Context, w http.ResponseWriter, messageKey string, data interface{}) {
+	SuccessT(ctx, w, http.StatusCreated, messageKey, data)
+}
+
+// OKT writes a 200 OK response with translated message
+func OKT(ctx context.Context, w http.ResponseWriter, messageKey string, data interface{}) {
+	SuccessT(ctx, w, http.StatusOK, messageKey, data)
+}
+
+// ErrorT writes an error JSON response with translated message
+func ErrorT(ctx context.Context, w http.ResponseWriter, statusCode int, code string, messageKey string, details map[string]string) {
+	JSON(w, statusCode, Response{
+		Success: false,
+		Error: &ErrorData{
+			Code:    code,
+			Message: i18n.T(ctx, messageKey),
+			Details: details,
+		},
+	})
+}
+
+// BadRequestT writes a 400 Bad Request response with translated message
+func BadRequestT(ctx context.Context, w http.ResponseWriter, messageKey string, details map[string]string) {
+	ErrorT(ctx, w, http.StatusBadRequest, "BAD_REQUEST", messageKey, details)
+}
+
+// UnauthorizedT writes a 401 Unauthorized response with translated message
+func UnauthorizedT(ctx context.Context, w http.ResponseWriter, messageKey string) {
+	ErrorT(ctx, w, http.StatusUnauthorized, "UNAUTHORIZED", messageKey, nil)
+}
+
+// ForbiddenT writes a 403 Forbidden response with translated message
+func ForbiddenT(ctx context.Context, w http.ResponseWriter, messageKey string) {
+	ErrorT(ctx, w, http.StatusForbidden, "FORBIDDEN", messageKey, nil)
+}
+
+// NotFoundT writes a 404 Not Found response with translated message
+func NotFoundT(ctx context.Context, w http.ResponseWriter, messageKey string) {
+	ErrorT(ctx, w, http.StatusNotFound, "NOT_FOUND", messageKey, nil)
+}
+
+// ConflictT writes a 409 Conflict response with translated message
+func ConflictT(ctx context.Context, w http.ResponseWriter, messageKey string, details map[string]string) {
+	ErrorT(ctx, w, http.StatusConflict, "CONFLICT", messageKey, details)
+}
+
+// UnprocessableEntityT writes a 422 Unprocessable Entity response with translated message
+func UnprocessableEntityT(ctx context.Context, w http.ResponseWriter, messageKey string, details map[string]string) {
+	ErrorT(ctx, w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY", messageKey, details)
+}
+
+// InternalServerErrorT writes a 500 Internal Server Error response with translated message
+func InternalServerErrorT(ctx context.Context, w http.ResponseWriter, messageKey string) {
+	ErrorT(ctx, w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", messageKey, nil)
+}
+
+// NotImplementedT writes a 501 Not Implemented response with translated message
+func NotImplementedT(ctx context.Context, w http.ResponseWriter, messageKey string) {
+	ErrorT(ctx, w, http.StatusNotImplemented, "NOT_IMPLEMENTED", messageKey, nil)
+}
+
+// SuccessWithMetaT writes a successful JSON response with metadata and translated message
+func SuccessWithMetaT(ctx context.Context, w http.ResponseWriter, statusCode int, messageKey string, data interface{}, meta *Meta) {
+	JSON(w, statusCode, Response{
+		Success: true,
+		Message: i18n.T(ctx, messageKey),
+		Data:    data,
+		Meta:    meta,
+	})
+}
+
+// OKWithMetaT writes a 200 OK response with metadata and translated message
+func OKWithMetaT(ctx context.Context, w http.ResponseWriter, messageKey string, data interface{}, meta *Meta) {
+	SuccessWithMetaT(ctx, w, http.StatusOK, messageKey, data, meta)
 }

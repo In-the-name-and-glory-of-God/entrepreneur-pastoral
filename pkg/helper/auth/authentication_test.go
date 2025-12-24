@@ -227,14 +227,34 @@ func TestIsValidEmail(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:        "missing dot",
+			name:        "missing dot - valid per RFC 5322",
 			email:       "test@example",
-			expectError: true,
+			expectError: false, // RFC 5322 allows domains without dots (e.g., localhost)
 		},
 		{
 			name:        "missing username",
 			email:       "@example.com",
-			expectError: false, // Current implementation doesn't check this
+			expectError: true, // RFC 5322 requires a local part before @
+		},
+		{
+			name:        "valid email with plus sign",
+			email:       "user+tag@example.com",
+			expectError: false,
+		},
+		{
+			name:        "valid email with dots in local part",
+			email:       "first.last@example.com",
+			expectError: false,
+		},
+		{
+			name:        "invalid email with spaces",
+			email:       "test @example.com",
+			expectError: true,
+		},
+		{
+			name:        "invalid email with double @",
+			email:       "test@@example.com",
+			expectError: true,
 		},
 	}
 
@@ -336,6 +356,20 @@ func TestGenerateRandomToken(t *testing.T) {
 		t.Error("Generated token is empty")
 	}
 
+	// Verify the token length is 2 * requested length (hex encoding)
+	expectedLen := 32 * 2 // hex encoding doubles the length
+	if len(token1) != expectedLen {
+		t.Errorf("Expected token length %d, got %d", expectedLen, len(token1))
+	}
+
+	// Verify it's a valid hex string
+	for _, c := range token1 {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			t.Errorf("Token contains invalid hex character: %c", c)
+			break
+		}
+	}
+
 	// Generate another token to ensure they're different
 	token2, err := GenerateRandomToken(32)
 	if err != nil {
@@ -346,9 +380,13 @@ func TestGenerateRandomToken(t *testing.T) {
 		t.Error("Generated tokens should be unique")
 	}
 
-	// Verify it's a valid UUID format
-	if !strings.Contains(token1, "-") {
-		t.Error("Token doesn't appear to be in UUID format")
+	// Test different lengths
+	token16, err := GenerateRandomToken(16)
+	if err != nil {
+		t.Fatalf("Failed to generate 16-byte token: %v", err)
+	}
+	if len(token16) != 32 { // 16 * 2 = 32 hex chars
+		t.Errorf("Expected 16-byte token to have length 32, got %d", len(token16))
 	}
 }
 
