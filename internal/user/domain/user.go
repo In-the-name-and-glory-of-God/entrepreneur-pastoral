@@ -30,6 +30,8 @@ type Role struct {
 type User struct {
 	ID               uuid.UUID      `json:"id" db:"id"`
 	RoleID           int16          `json:"role_id" db:"role_id"`
+	AddressID        uuid.UUID      `json:"address_id" db:"address_id"`
+	ChurchID         uuid.UUID      `json:"church_id" db:"church_id"`
 	FirstName        string         `json:"first_name" db:"first_name"`
 	LastName         string         `json:"last_name" db:"last_name"`
 	Email            string         `json:"email" db:"email"`

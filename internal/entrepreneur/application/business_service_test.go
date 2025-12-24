@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/entrepreneur/infrastructure/dto"
 	userDto "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/storage"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
@@ -68,10 +70,69 @@ func (m *MockBusinessRepository) UpdateProperty(ctx context.Context, id uuid.UUI
 	return args.Error(0)
 }
 
+// MockCacheStorage
+type MockCacheStorage struct {
+	mock.Mock
+}
+
+func (m *MockCacheStorage) BuildKey(prefix storage.CachePrefix, data ...string) string {
+	args := m.Called(prefix, data)
+	return args.String(0)
+}
+
+func (m *MockCacheStorage) Get(ctx context.Context, key string, dest any) error {
+	args := m.Called(ctx, key, dest)
+	return args.Error(0)
+}
+
+func (m *MockCacheStorage) GetAndDel(ctx context.Context, key string, dest any) error {
+	args := m.Called(ctx, key, dest)
+	return args.Error(0)
+}
+
+func (m *MockCacheStorage) GetString(ctx context.Context, key string) (string, error) {
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockCacheStorage) GetStringAndDel(ctx context.Context, key string) (string, error) {
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockCacheStorage) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
+	args := m.Called(ctx, key, value, expiration)
+	return args.Error(0)
+}
+
+func (m *MockCacheStorage) SetString(ctx context.Context, key string, value string, expiration time.Duration) error {
+	args := m.Called(ctx, key, value, expiration)
+	return args.Error(0)
+}
+
+func (m *MockCacheStorage) Del(ctx context.Context, key string) error {
+	args := m.Called(ctx, key)
+	return args.Error(0)
+}
+
+func (m *MockCacheStorage) Scan(ctx context.Context, match string) ([]string, error) {
+	args := m.Called(ctx, match)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockCacheStorage) Exists(ctx context.Context, key string) (bool, error) {
+	args := m.Called(ctx, key)
+	return args.Bool(0), args.Error(1)
+}
+
 func TestBusinessService_Create(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
-	service := NewBusinessService(logger, mockRepo)
+	mockCache := new(MockCacheStorage)
+	service := NewBusinessService(logger, mockCache, mockRepo)
 
 	userID := uuid.New()
 	userCtx := &userDto.UserAsContext{ID: userID}
@@ -87,6 +148,8 @@ func TestBusinessService_Create(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.On("Create", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Business")).Return(nil)
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS_LIST, mock.Anything).Return("business_list:*")
+		mockCache.On("Scan", ctx, "business_list:*").Return([]string{}, nil)
 
 		result, err := service.Create(ctx, req)
 
@@ -98,6 +161,7 @@ func TestBusinessService_Create(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
 		mockRepo.On("Create", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Business")).Return(errors.New("db error"))
 
 		result, err := service.Create(ctx, req)
@@ -112,7 +176,8 @@ func TestBusinessService_Create(t *testing.T) {
 func TestBusinessService_Update(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
-	service := NewBusinessService(logger, mockRepo)
+	mockCache := new(MockCacheStorage)
+	service := NewBusinessService(logger, mockCache, mockRepo)
 
 	userID := uuid.New()
 	userCtx := &userDto.UserAsContext{ID: userID}
@@ -138,6 +203,10 @@ func TestBusinessService_Update(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 		mockRepo.On("Update", (*sqlx.Tx)(nil), mock.AnythingOfType("*domain.Business")).Return(nil)
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS, mock.Anything).Return("business:" + id.String())
+		mockCache.On("Del", ctx, "business:"+id.String()).Return(nil)
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS_LIST, mock.Anything).Return("business_list:*")
+		mockCache.On("Scan", ctx, "business_list:*").Return([]string{}, nil)
 
 		err := service.Update(ctx, req)
 
@@ -147,6 +216,7 @@ func TestBusinessService_Update(t *testing.T) {
 
 	t.Run("NotFound", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, id).Return(nil, domain.ErrBusinessNotFound)
 
 		err := service.Update(ctx, req)
@@ -158,6 +228,7 @@ func TestBusinessService_Update(t *testing.T) {
 
 	t.Run("Unauthorized", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
 		existingBusiness.UserID = uuid.New()
 		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 
@@ -172,7 +243,8 @@ func TestBusinessService_Update(t *testing.T) {
 func TestBusinessService_Delete(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
-	service := NewBusinessService(logger, mockRepo)
+	mockCache := new(MockCacheStorage)
+	service := NewBusinessService(logger, mockCache, mockRepo)
 
 	userID := uuid.New()
 	userCtx := &userDto.UserAsContext{ID: userID}
@@ -187,6 +259,10 @@ func TestBusinessService_Delete(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(nil)
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS, mock.Anything).Return("business:" + id.String())
+		mockCache.On("Del", ctx, "business:"+id.String()).Return(nil)
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS_LIST, mock.Anything).Return("business_list:*")
+		mockCache.On("Scan", ctx, "business_list:*").Return([]string{}, nil)
 
 		err := service.Delete(ctx, id)
 
@@ -196,6 +272,7 @@ func TestBusinessService_Delete(t *testing.T) {
 
 	t.Run("Failure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
 		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 		mockRepo.On("Delete", (*sqlx.Tx)(nil), id).Return(errors.New("db error"))
 
@@ -207,6 +284,7 @@ func TestBusinessService_Delete(t *testing.T) {
 
 	t.Run("Unauthorized", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
 		existingBusiness.UserID = uuid.New()
 		mockRepo.On("GetByID", ctx, id).Return(existingBusiness, nil)
 
@@ -221,7 +299,8 @@ func TestBusinessService_Delete(t *testing.T) {
 func TestBusinessService_GetByID(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
-	service := NewBusinessService(logger, mockRepo)
+	mockCache := new(MockCacheStorage)
+	service := NewBusinessService(logger, mockCache, mockRepo)
 	ctx := context.Background()
 	id := uuid.New()
 
@@ -231,7 +310,11 @@ func TestBusinessService_GetByID(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
+		cacheKey := "business:" + id.String()
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS, mock.Anything).Return(cacheKey)
+		mockCache.On("Get", ctx, cacheKey, mock.AnythingOfType("*domain.Business")).Return(errors.New("cache miss"))
 		mockRepo.On("GetByID", ctx, id).Return(expectedBusiness, nil)
+		mockCache.On("Set", ctx, cacheKey, expectedBusiness, mock.Anything).Return(nil)
 
 		result, err := service.GetByID(ctx, id)
 
@@ -242,6 +325,10 @@ func TestBusinessService_GetByID(t *testing.T) {
 
 	t.Run("NotFound", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
+		cacheKey := "business:" + id.String()
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS, mock.Anything).Return(cacheKey)
+		mockCache.On("Get", ctx, cacheKey, mock.AnythingOfType("*domain.Business")).Return(errors.New("cache miss"))
 		mockRepo.On("GetByID", ctx, id).Return(nil, domain.ErrBusinessNotFound)
 
 		result, err := service.GetByID(ctx, id)
@@ -256,7 +343,8 @@ func TestBusinessService_GetByID(t *testing.T) {
 func TestBusinessService_List(t *testing.T) {
 	logger := zap.NewNop().Sugar()
 	mockRepo := new(MockBusinessRepository)
-	service := NewBusinessService(logger, mockRepo)
+	mockCache := new(MockCacheStorage)
+	service := NewBusinessService(logger, mockCache, mockRepo)
 	ctx := context.Background()
 
 	req := &dto.BusinessListRequest{
@@ -270,8 +358,12 @@ func TestBusinessService_List(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
+		cacheKey := "business_list:10:0"
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS_LIST, mock.Anything).Return(cacheKey)
+		mockCache.On("Get", ctx, cacheKey, mock.AnythingOfType("*dto.BusinessListResponse")).Return(errors.New("cache miss"))
 		mockRepo.On("List", ctx, req).Return(expectedBusinesses, nil)
 		mockRepo.On("Count", ctx, req).Return(2, nil)
+		mockCache.On("Set", ctx, cacheKey, mock.AnythingOfType("*dto.BusinessListResponse"), mock.Anything).Return(nil)
 
 		result, err := service.List(ctx, req)
 
@@ -284,6 +376,10 @@ func TestBusinessService_List(t *testing.T) {
 
 	t.Run("ListFailure", func(t *testing.T) {
 		mockRepo.ExpectedCalls = nil
+		mockCache.ExpectedCalls = nil
+		cacheKey := "business_list:10:0"
+		mockCache.On("BuildKey", storage.CACHE_PREFIX_BUSINESS_LIST, mock.Anything).Return(cacheKey)
+		mockCache.On("Get", ctx, cacheKey, mock.AnythingOfType("*dto.BusinessListResponse")).Return(errors.New("cache miss"))
 		mockRepo.On("List", ctx, req).Return(nil, errors.New("db error"))
 
 		result, err := service.List(ctx, req)

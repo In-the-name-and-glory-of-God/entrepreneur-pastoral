@@ -65,10 +65,12 @@ func (r *UserPersistence) Create(tx *sqlx.Tx, user *domain.User) error {
 		Columns(
 			"role_id", "first_name", "last_name", "email", "password",
 			"document_id", "phone_country_code", "phone_number",
+			"address_id", "church_id",
 		).
 		Values(
 			constants.ROLE_USER, user.FirstName, user.LastName, user.Email, user.Password,
 			user.DocumentID, user.PhoneCountryCode, user.PhoneNumber,
+			user.AddressID, user.ChurchID,
 		).
 		Suffix("RETURNING id").
 		ToSql()
@@ -95,6 +97,8 @@ func (r *UserPersistence) Update(tx *sqlx.Tx, user *domain.User) error {
 		Set("document_id", user.DocumentID).
 		Set("phone_country_code", user.PhoneCountryCode).
 		Set("phone_number", user.PhoneNumber).
+		Set("address_id", user.AddressID).
+		Set("church_id", user.ChurchID).
 		Where(sq.Eq{"id": user.ID}).
 		ToSql()
 
@@ -122,6 +126,37 @@ func (r *UserPersistence) UpdateProperty(ctx context.Context, id uuid.UUID, prop
 
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to execute update user by property query: %w", err)
+	}
+
+	return nil
+}
+
+// Delete removes a user from the database by their ID.
+// Due to CASCADE constraints, this will also delete associated:
+// - notification_preferences
+// - job_profiles
+// - businesses (and their products, services, jobs)
+func (r *UserPersistence) Delete(ctx context.Context, id uuid.UUID) error {
+	query, args, err := r.psql.Delete("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("failed to build delete user query: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete user query: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrUserNotFound
 	}
 
 	return nil

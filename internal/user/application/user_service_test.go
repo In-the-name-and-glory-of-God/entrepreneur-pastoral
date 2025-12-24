@@ -129,6 +129,11 @@ func (m *MockUserRepository) Count(ctx context.Context, filter *domain.UserFilte
 	return args.Int(0), args.Error(1)
 }
 
+func (m *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 type MockNotificationPreferencesRepository struct {
 	mock.Mock
 }
@@ -181,21 +186,60 @@ func (m *MockJobProfileRepository) GetAllOpenToWork(ctx context.Context) ([]*dom
 	return args.Get(0).([]*domain.JobProfile), args.Error(1)
 }
 
+type MockAddressRepository struct {
+	mock.Mock
+}
+
+func (m *MockAddressRepository) Create(tx *sqlx.Tx, address *adminDomain.Address) error {
+	args := m.Called(tx, address)
+	if args.Get(0) == nil {
+		// Simulate ID generation
+		if address.ID == uuid.Nil {
+			address.ID = uuid.New()
+		}
+	}
+	return args.Error(0)
+}
+
+func (m *MockAddressRepository) CreateWithContext(ctx context.Context, address *adminDomain.Address) error {
+	args := m.Called(ctx, address)
+	return args.Error(0)
+}
+
+func (m *MockAddressRepository) Update(ctx context.Context, address *adminDomain.Address) error {
+	args := m.Called(ctx, address)
+	return args.Error(0)
+}
+
+func (m *MockAddressRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockAddressRepository) GetByID(ctx context.Context, id uuid.UUID) (*adminDomain.Address, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*adminDomain.Address), args.Error(1)
+}
+
 // Test helpers
-func setupTest() (*UserService, *MockUserRepository, *MockNotificationPreferencesRepository, *MockJobProfileRepository) {
+func setupTest() (*UserService, *MockUserRepository, *MockNotificationPreferencesRepository, *MockJobProfileRepository, *MockAddressRepository) {
 	logger := zap.NewNop().Sugar()
 	mockUserRepo := new(MockUserRepository)
 	mockNotifPrefRepo := new(MockNotificationPreferencesRepository)
 	mockJobProfileRepo := new(MockJobProfileRepository)
+	mockAddressRepo := new(MockAddressRepository)
 
-	service := NewUserService(logger, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo)
+	service := NewUserService(logger, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, mockAddressRepo)
 
-	return service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo
+	return service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, mockAddressRepo
 }
 
 // Test Create
 func TestUserService_Create_Success(t *testing.T) {
-	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo := setupTest()
+	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, mockAddressRepo := setupTest()
 	ctx := context.Background()
 
 	req := &dto.UserRegisterRequest{
@@ -217,20 +261,23 @@ func TestUserService_Create_Success(t *testing.T) {
 	mockUserRepo.On("GetByEmail", ctx, req.Email).Return(nil, domain.ErrUserNotFound)
 	mockUserRepo.On("GetByDocumentID", ctx, req.DocumentID).Return(nil, domain.ErrUserNotFound)
 	mockUserRepo.On("UnitOfWork", ctx, mock.AnythingOfType("func(*sqlx.Tx) error")).Return(nil)
+	mockAddressRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Address")).Return(nil)
 	mockUserRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.User")).Return(nil)
 	mockNotifPrefRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.NotificationPreferences")).Return(nil)
 	mockJobProfileRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.JobProfile")).Return(nil)
 
-	err := service.Create(ctx, req)
+	user, err := service.Create(ctx, req)
 
 	assert.NoError(t, err)
+	assert.NotNil(t, user)
 	mockUserRepo.AssertExpectations(t)
+	mockAddressRepo.AssertExpectations(t)
 	mockNotifPrefRepo.AssertExpectations(t)
 	mockJobProfileRepo.AssertExpectations(t)
 }
 
 func TestUserService_Create_EmailAlreadyExists(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	req := &dto.UserRegisterRequest{
@@ -245,15 +292,16 @@ func TestUserService_Create_EmailAlreadyExists(t *testing.T) {
 
 	mockUserRepo.On("GetByEmail", ctx, req.Email).Return(existingUser, nil)
 
-	err := service.Create(ctx, req)
+	user, err := service.Create(ctx, req)
 
 	assert.Error(t, err)
+	assert.Nil(t, user)
 	assert.Equal(t, domain.ErrEmailAlreadyExists, err)
 	mockUserRepo.AssertExpectations(t)
 }
 
 func TestUserService_Create_DocumentIDAlreadyExists(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	req := &dto.UserRegisterRequest{
@@ -269,15 +317,16 @@ func TestUserService_Create_DocumentIDAlreadyExists(t *testing.T) {
 	mockUserRepo.On("GetByEmail", ctx, req.Email).Return(nil, domain.ErrUserNotFound)
 	mockUserRepo.On("GetByDocumentID", ctx, req.DocumentID).Return(existingUser, nil)
 
-	err := service.Create(ctx, req)
+	user, err := service.Create(ctx, req)
 
 	assert.Error(t, err)
+	assert.Nil(t, user)
 	assert.Equal(t, domain.ErrDocumentIDAlreadyExists, err)
 	mockUserRepo.AssertExpectations(t)
 }
 
 func TestUserService_Create_DatabaseError(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	req := &dto.UserRegisterRequest{
@@ -287,15 +336,16 @@ func TestUserService_Create_DatabaseError(t *testing.T) {
 
 	mockUserRepo.On("GetByEmail", ctx, req.Email).Return(nil, errors.New("database error"))
 
-	err := service.Create(ctx, req)
+	user, err := service.Create(ctx, req)
 
 	assert.Error(t, err)
+	assert.Nil(t, user)
 	assert.Equal(t, response.ErrInternalServerError, err)
 	mockUserRepo.AssertExpectations(t)
 }
 
 func TestUserService_Create_UserCreationFailed(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	req := &dto.UserRegisterRequest{
@@ -311,15 +361,16 @@ func TestUserService_Create_UserCreationFailed(t *testing.T) {
 	mockUserRepo.On("UnitOfWork", ctx, mock.AnythingOfType("func(*sqlx.Tx) error")).
 		Return(errors.New("database error"))
 
-	err := service.Create(ctx, req)
+	user, err := service.Create(ctx, req)
 
 	assert.Error(t, err)
+	assert.Nil(t, user)
 	mockUserRepo.AssertExpectations(t)
 }
 
 // Test Update
 func TestUserService_Update_Success(t *testing.T) {
-	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo := setupTest()
+	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -363,7 +414,7 @@ func TestUserService_Update_Success(t *testing.T) {
 }
 
 func TestUserService_Update_UserNotFound(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -381,7 +432,7 @@ func TestUserService_Update_UserNotFound(t *testing.T) {
 }
 
 func TestUserService_Update_UpdateFailed(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -405,7 +456,7 @@ func TestUserService_Update_UpdateFailed(t *testing.T) {
 
 // Test GetByID
 func TestUserService_GetByID_Success(t *testing.T) {
-	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo := setupTest()
+	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -443,7 +494,7 @@ func TestUserService_GetByID_Success(t *testing.T) {
 }
 
 func TestUserService_GetByID_UserNotFound(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -459,7 +510,7 @@ func TestUserService_GetByID_UserNotFound(t *testing.T) {
 }
 
 func TestUserService_GetByID_NotificationPreferencesError(t *testing.T) {
-	service, mockUserRepo, mockNotifPrefRepo, _ := setupTest()
+	service, mockUserRepo, mockNotifPrefRepo, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -482,7 +533,7 @@ func TestUserService_GetByID_NotificationPreferencesError(t *testing.T) {
 }
 
 func TestUserService_GetByID_JobProfileError(t *testing.T) {
-	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo := setupTest()
+	service, mockUserRepo, mockNotifPrefRepo, mockJobProfileRepo, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -509,7 +560,7 @@ func TestUserService_GetByID_JobProfileError(t *testing.T) {
 
 // Test List
 func TestUserService_List_Success(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	limit := 10
@@ -538,7 +589,7 @@ func TestUserService_List_Success(t *testing.T) {
 }
 
 func TestUserService_List_EmptyResults(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	filter := &dto.UserListRequest{}
@@ -556,7 +607,7 @@ func TestUserService_List_EmptyResults(t *testing.T) {
 }
 
 func TestUserService_List_ListError(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	filter := &dto.UserListRequest{}
@@ -572,7 +623,7 @@ func TestUserService_List_ListError(t *testing.T) {
 }
 
 func TestUserService_List_CountError(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	filter := &dto.UserListRequest{}
@@ -593,7 +644,7 @@ func TestUserService_List_CountError(t *testing.T) {
 
 // Test UpdateActiveStatus
 func TestUserService_UpdateActiveStatus_Success(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -617,7 +668,7 @@ func TestUserService_UpdateActiveStatus_Success(t *testing.T) {
 }
 
 func TestUserService_UpdateActiveStatus_UserNotFound(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -636,7 +687,7 @@ func TestUserService_UpdateActiveStatus_UserNotFound(t *testing.T) {
 }
 
 func TestUserService_UpdateActiveStatus_UpdateError(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -661,7 +712,7 @@ func TestUserService_UpdateActiveStatus_UpdateError(t *testing.T) {
 
 // Test VerifyUser
 func TestUserService_VerifyEmail_Success(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -681,7 +732,7 @@ func TestUserService_VerifyEmail_Success(t *testing.T) {
 
 // Test UpdateCatholicStatus
 func TestUserService_UpdateCatholicStatus_Success(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()
@@ -706,7 +757,7 @@ func TestUserService_UpdateCatholicStatus_Success(t *testing.T) {
 
 // Test UpdateEntrepreneurStatus
 func TestUserService_UpdateEntrepreneurStatus_Success(t *testing.T) {
-	service, mockUserRepo, _, _ := setupTest()
+	service, mockUserRepo, _, _, _ := setupTest()
 	ctx := context.Background()
 
 	userID := uuid.New()

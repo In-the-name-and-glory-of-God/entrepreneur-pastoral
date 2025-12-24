@@ -30,6 +30,7 @@ import (
 
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
+	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/config"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/response"
 	"github.com/google/uuid"
@@ -43,8 +44,9 @@ func setupAuthTest() (*AuthService, *MockUserRepository, *auth.TokenManager) {
 	logger := zap.NewNop().Sugar()
 	mockUserRepo := new(MockUserRepository)
 	tokenManager := auth.NewTokenManager("test-secret-key-for-jwt-signing")
+	cfg := config.Config{}
 
-	service := NewAuthService(logger, tokenManager, mockUserRepo)
+	service := NewAuthService(logger, cfg, nil, nil, tokenManager, mockUserRepo)
 
 	return service, mockUserRepo, tokenManager
 }

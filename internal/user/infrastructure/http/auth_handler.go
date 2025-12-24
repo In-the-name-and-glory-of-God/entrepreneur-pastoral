@@ -51,7 +51,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.userService.Create(r.Context(), &req); err != nil {
+	user, err := h.userService.Create(r.Context(), &req)
+	if err != nil {
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
 			response.Conflict(w, "Email already exists", nil)
 			return
@@ -66,9 +67,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Send verification email logic here
+	// Send verification email
+	if err := h.authService.SendVerificationEmail(r.Context(), user); err != nil {
+		h.logger.Errorw("Failed to send verification email", "userID", user.ID, "error", err)
+		// Don't fail registration if email sending fails, just log the error
+	}
 
-	response.Created(w, "User registered successfully", nil)
+	response.Created(w, "User registered successfully. Please check your email to verify your account.", nil)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -133,9 +138,26 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: Send email with password reset link logic here
-	// TODO: Generate token and store in cache with expiration
-	response.OK(w, "Password reset link sent to email", nil)
+	// Get user by email - don't reveal if email exists or not for security
+	user, err := h.authService.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		// Return success even if user not found to prevent email enumeration
+		response.OK(w, "If the email exists, a password reset link has been sent", nil)
+		return
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		response.OK(w, "If the email exists, a password reset link has been sent", nil)
+		return
+	}
+
+	// Send password reset email
+	if err := h.authService.SendPasswordResetEmail(r.Context(), user); err != nil {
+		h.logger.Errorw("Failed to send password reset email", "email", req.Email, "error", err)
+	}
+
+	response.OK(w, "If the email exists, a password reset link has been sent", nil)
 }
 
 // ConfirmPasswordReset handles the actual password reset (with token validation)
@@ -160,6 +182,25 @@ func (h *AuthHandler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Reques
 	}
 	req.ID = userID
 
+	// Validate token from cache
+	cacheKey := h.cache.BuildKey(storage.CACHE_PREFIX_PASSWORD_RESET, token)
+	cachedUserID, err := h.cache.GetStringAndDel(r.Context(), cacheKey)
+	if err != nil {
+		if errors.Is(err, storage.ErrCacheMiss) {
+			response.BadRequest(w, "Invalid or expired token", nil)
+			return
+		}
+		h.logger.Errorf("Failed to retrieve password reset token", "error", err)
+		response.InternalServerError(w, "Failed to reset password")
+		return
+	}
+
+	// Verify the token belongs to the correct user
+	if cachedUserID != userID.String() {
+		response.BadRequest(w, "Invalid token for this user", nil)
+		return
+	}
+
 	// Validate user status before allowing password reset
 	userResp, err := h.userService.GetByID(r.Context(), userID)
 	if err != nil {
@@ -176,8 +217,6 @@ func (h *AuthHandler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Reques
 		response.Forbidden(w, "User account is inactive")
 		return
 	}
-
-	// TODO: Validate token from cache logic here
 
 	if err := auth.IsStrongPassword(req.NewPassword); err != nil {
 		response.BadRequest(w, "New password does not meet strength requirements: "+err.Error(), nil)

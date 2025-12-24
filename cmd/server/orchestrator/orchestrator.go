@@ -73,10 +73,10 @@ func (o *Orchestrator) Compose() *Symphony {
 
 	// # Application
 	// ## User
-	authService := application.NewAuthService(o.log, o.tokenManager, userPersistence)
-	userService := application.NewUserService(o.log, userPersistence, notificationPreferencesPersistence, jobProfilePersistence)
+	authService := application.NewAuthService(o.log, o.cfg, o.cache, o.queue, o.tokenManager, userPersistence)
+	userService := application.NewUserService(o.log, userPersistence, notificationPreferencesPersistence, jobProfilePersistence, addressPersistence)
 	// ## Entrepreneur
-	businessService := entrepreneurApp.NewBusinessService(o.log, businessPersistence)
+	businessService := entrepreneurApp.NewBusinessService(o.log, o.cache, businessPersistence)
 	productService := entrepreneurApp.NewProductService(o.log, productPersistence, businessPersistence)
 	serviceService := entrepreneurApp.NewServiceService(o.log, servicePersistence, businessPersistence)
 	jobService := entrepreneurApp.NewJobService(o.log, jobPersistence, businessPersistence)

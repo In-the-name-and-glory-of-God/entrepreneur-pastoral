@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	adminDomain "github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/admin/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/domain"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/internal/user/infrastructure/dto"
 	"github.com/In-the-name-and-glory-of-God/entrepreneur-pastoral/pkg/helper/auth"
@@ -21,6 +22,7 @@ type UserService struct {
 	userRepo       domain.UserRepository
 	notifPrefRepo  domain.NotificationPreferencesRepository
 	jobProfileRepo domain.JobProfileRepository
+	addressRepo    adminDomain.AddressRepository
 }
 
 // NewUserService creates a new UserService with its dependencies.
@@ -29,45 +31,63 @@ func NewUserService(
 	userRepo domain.UserRepository,
 	notifPrefRepo domain.NotificationPreferencesRepository,
 	jobProfileRepo domain.JobProfileRepository,
+	addressRepo adminDomain.AddressRepository,
 ) *UserService {
 	return &UserService{
 		logger:         logger,
 		userRepo:       userRepo,
 		notifPrefRepo:  notifPrefRepo,
 		jobProfileRepo: jobProfileRepo,
+		addressRepo:    addressRepo,
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, req *dto.UserRegisterRequest) error {
+func (s *UserService) Create(ctx context.Context, req *dto.UserRegisterRequest) (*domain.User, error) {
 	// Check if email already exists
 	if _, err := s.userRepo.GetByEmail(ctx, req.Email); err == nil {
 		// User found - email already exists
-		return domain.ErrEmailAlreadyExists
+		return nil, domain.ErrEmailAlreadyExists
 	} else if !errors.Is(err, domain.ErrUserNotFound) {
 		// Unexpected error
 		s.logger.Errorw("failed to check existing email", "email", req.Email, "error", err)
-		return response.ErrInternalServerError
+		return nil, response.ErrInternalServerError
 	}
 
 	// Check if document ID already exists
 	if _, err := s.userRepo.GetByDocumentID(ctx, req.DocumentID); err == nil {
 		// User found - document ID already exists
-		return domain.ErrDocumentIDAlreadyExists
+		return nil, domain.ErrDocumentIDAlreadyExists
 	} else if !errors.Is(err, domain.ErrUserNotFound) {
 		// Unexpected error
 		s.logger.Errorw("failed to check existing document ID", "documentID", req.DocumentID, "error", err)
-		return response.ErrInternalServerError
+		return nil, response.ErrInternalServerError
 	}
 
 	hashedPassword, err := auth.HashPassword(req.Password)
 	if err != nil {
 		s.logger.Errorw("failed to hash password", "error", err)
-		return domain.ErrPasswordHashFailed
+		return nil, domain.ErrPasswordHashFailed
 	}
 
-	return s.userRepo.UnitOfWork(ctx, func(tx *sqlx.Tx) error {
-		// 3. Create the User
-		newUser := &domain.User{
+	var newUser *domain.User
+
+	err = s.userRepo.UnitOfWork(ctx, func(tx *sqlx.Tx) error {
+		// 1. Create the Address
+		address := &adminDomain.Address{
+			StreetLine1:   req.Address.StreetLine1,
+			StreetLine2:   sql.NullString{String: req.Address.StreetLine2, Valid: req.Address.StreetLine2 != ""},
+			City:          req.Address.City,
+			StateProvince: req.Address.StateProvince,
+			PostalCode:    req.Address.PostalCode,
+			Country:       req.Address.Country,
+		}
+		if err := s.addressRepo.Create(tx, address); err != nil {
+			s.logger.Errorw("failed to create address for user", "error", err)
+			return response.ErrInternalServerError
+		}
+
+		// 2. Create the User with the Address ID
+		newUser = &domain.User{
 			FirstName:        req.FirstName,
 			LastName:         req.LastName,
 			Email:            req.Email,
@@ -75,19 +95,21 @@ func (s *UserService) Create(ctx context.Context, req *dto.UserRegisterRequest) 
 			DocumentID:       req.DocumentID,
 			PhoneCountryCode: sql.NullString{String: req.PhoneCountryCode, Valid: req.PhoneCountryCode != ""},
 			PhoneNumber:      sql.NullString{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+			AddressID:        address.ID,
+			ChurchID:         req.ChurchID,
 		}
 		if err := s.userRepo.Create(tx, newUser); err != nil {
 			s.logger.Errorw("failed to create user", "email", req.Email, "error", err)
 			return response.ErrInternalServerError
 		}
 
-		// 4. Create the default NotificationPreferences
+		// 3. Create the default NotificationPreferences
 		if err := s.notifPrefRepo.Create(tx, &domain.NotificationPreferences{UserID: newUser.ID}); err != nil {
 			s.logger.Errorw("failed to create notification preferences", "error", err)
 			return response.ErrInternalServerError
 		}
 
-		// 5. Create the JobProfile
+		// 4. Create the JobProfile
 		newJobProfile := &domain.JobProfile{
 			UserID:       newUser.ID,
 			OpenToWork:   req.OpenToWork,
@@ -101,6 +123,12 @@ func (s *UserService) Create(ctx context.Context, req *dto.UserRegisterRequest) 
 
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newUser, nil
 }
 
 // Update modifies an existing user's basic information.
@@ -117,6 +145,8 @@ func (s *UserService) Update(ctx context.Context, req *dto.UserUpdateRequest) er
 	user.DocumentID = req.DocumentID
 	user.PhoneCountryCode = sql.NullString{String: req.PhoneCountryCode, Valid: req.PhoneCountryCode != ""}
 	user.PhoneNumber = sql.NullString{String: req.PhoneNumber, Valid: req.PhoneNumber != ""}
+	user.AddressID = req.AddressID
+	user.ChurchID = req.ChurchID
 
 	return s.userRepo.UnitOfWork(ctx, func(tx *sqlx.Tx) error {
 		// 3. Update the User

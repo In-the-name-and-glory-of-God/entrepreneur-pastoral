@@ -33,6 +33,10 @@ const (
 	CACHE_PREFIX_EMAIL_VERIFICATION
 	CACHE_PREFIX_PASSWORD_RESET
 	CACHE_PREFIX_REFRESH_TOKEN
+	CACHE_PREFIX_JOB_PROFILE
+	CACHE_PREFIX_JOB_PROFILE_LIST
+	CACHE_PREFIX_BUSINESS
+	CACHE_PREFIX_BUSINESS_LIST
 )
 
 func (p CachePrefix) String() string {
@@ -45,6 +49,14 @@ func (p CachePrefix) String() string {
 		return "password_reset"
 	case CACHE_PREFIX_REFRESH_TOKEN:
 		return "refresh_token"
+	case CACHE_PREFIX_JOB_PROFILE:
+		return "job_profile"
+	case CACHE_PREFIX_JOB_PROFILE_LIST:
+		return "job_profile_list"
+	case CACHE_PREFIX_BUSINESS:
+		return "business"
+	case CACHE_PREFIX_BUSINESS_LIST:
+		return "business_list"
 	default:
 		return ""
 	}

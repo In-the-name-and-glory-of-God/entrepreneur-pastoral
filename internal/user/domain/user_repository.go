@@ -12,6 +12,7 @@ type UserRepository interface {
 	Create(tx *sqlx.Tx, user *User) error
 	Update(tx *sqlx.Tx, user *User) error
 	UpdateProperty(ctx context.Context, id uuid.UUID, property UserProperty, value any) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByDocumentID(ctx context.Context, documentID string) (*User, error)

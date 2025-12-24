@@ -28,6 +28,8 @@ type UserUpdateRequest struct {
 	DocumentID       string    `json:"document_id"`
 	PhoneCountryCode string    `json:"phone_country_code"`
 	PhoneNumber      string    `json:"phone_number"`
+	AddressID        uuid.UUID `json:"address_id"`
+	ChurchID         uuid.UUID `json:"church_id"`
 	// NotificationPreferences
 	NotifyByEmail bool `json:"notify_by_email"`
 	NotifyBySms   bool `json:"notify_by_sms"`
